@@ -1,0 +1,4 @@
+{
+	"name": "mongshell-ops",
+	"description": "Mongshell 운영 도구 — Claude Code 가 Slack 봇(Mongshell-Claude)으로 OpenClaw 에게 직접 요청하고 스레드에서 답을 읽는 브리지(openclaw 스킬 + openclaw-slack 스크립트). 봇 토큰은 PC 별 macOS 키체인."
+}
