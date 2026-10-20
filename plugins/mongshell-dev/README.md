@@ -116,7 +116,7 @@ flowchart LR
 
 ## 공통 분류 등급
 
-모든 reviewer 와 `/qa` 스킬은 findings 를 다음 등급(P0 / P1 / P2)으로 분류하고, 등급 밖 **귀속 표시** 하나(`Pre-existing`)를 함께 씁니다 — 단일 권위.
+모든 reviewer 와 `/qa` 스킬은 findings 를 다음 등급(P0 / P1 / P2)으로 분류합니다 — 단일 권위. 코드 reviewer(`code-reviewer`)와 `/qa` 는 등급 밖 **귀속 표시** 하나(`Pre-existing`)를 함께 씁니다(다른 reviewer 는 해당 없음 — 재검증 카운트에서는 0).
 
 - **`P0`** — 머지 차단. 정확성 / 보안 / 빌드·테스트·lint 실패 / 명세 권위 위반 등.
 - **`P1`** — 권장 개선. 차단은 아니지만 머지 전 가능하면 해결.

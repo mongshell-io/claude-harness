@@ -406,14 +406,19 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 MARKER="/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)"
 # 위험 경로: 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 항목(마이그레이션·요청 경로·CI 워크플로)에 닿는 변경 파일.
 # /pr 은 로컬 base 비교를 하지 않으므로(그 스킬의 제약) RANGE 를 이미 가진 여기서 계산해 marker 에 남긴다.
-# <migration-dir> 권위는 DB 영역 CLAUDE.md, <request-path-file> 권위는 루트 CLAUDE.md 스택 메모 (프로젝트 종속값 — 본문에 미기재).
-RISKY=$(git diff --name-only $RANGE | grep -E '^(\.github/|<migration-dir>/|<request-path-file>$)' | tr '\n' ' ')
-cat > "$MARKER" <<EOF
+# 실행 전 두 자리표시자를 권위 문서 값으로 치환한다 — <migration-dir> 는 DB 영역 CLAUDE.md, <request-path-file> 은 루트 CLAUDE.md
+# 스택 메모 (프로젝트 종속값 — 본문에 미기재). 미치환 상태로 돌면 regex 가 .github/ 외엔 못 잡아 Low 를 제안하는 fail-open 이
+# 되므로, '<' 가 남아 있으면 marker 를 기록하지 않고 stop 한다.
+RISKY_PATTERN='^(\.github/|<migration-dir>/|<request-path-file>$)'
+case "$RISKY_PATTERN" in *'<'*) echo "위험 경로 패턴 미치환 — marker 기록 중단 (권위 문서 값으로 치환 후 재실행)"; exit 1;; esac
+RISKY=$(git diff --name-only $RANGE | grep -E "$RISKY_PATTERN" | tr '\n' ' ')
+# 본문은 따옴표 heredoc — findings 문구의 백틱·$ 가 명령 치환·변수 확장에 걸리지 않게. 위험 경로 줄만 셸이 붙인다.
+{ cat <<'EOF'
 발견 <N>건 (P0 0 · P1 <b> · P2 <c>) · Pre-existing <d> — /qa --branch <YYYY-MM-DD>
 - 미해결 P1: <file:line — 한 줄 사유. 없으면 "없음">
 - Pre-existing: <file:line — 한 줄. 없으면 "없음">
-- 위험 경로: ${RISKY:-없음}
 EOF
+printf -- '- 위험 경로: %s\n' "${RISKY:-없음}"; } > "$MARKER"
 ```
 
 (`<…>` 자리만 Step 5 리포트의 **발견** 줄과 findings 에서 옮겨 채운다. 발견 0건이면 첫 줄은 "발견 0건 — 고칠 것 없음". 위험 경로 줄은 셸이 채운다 — 손으로 쓰지 않는다. 위험 경로가 있으면 /pr 이 Risk 를 High 로 제안한다.)

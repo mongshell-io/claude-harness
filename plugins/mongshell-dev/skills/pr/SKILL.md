@@ -23,7 +23,7 @@ GitHub PR 생성의 단일 진입점. 브랜치명(1순위) 또는 커밋 메시
 - 마일스톤 사이클 (`/plan` 단위): `cycle/<slug>` — 버전 숫자를 브랜치명에 박지 않는다 (버전 SSOT = git tag max, `/release` 시점 계산). type-free prefix.
 - `<slug>` 는 kebab-case (소문자 + 하이픈).
 
-> 머지 규약(`--squash` 만, `--delete-branch` 금지)은 /pr 미호출 세션의 머지 시점에도 필요해 **루트 CLAUDE.md 상시 코어**가 권위다.
+> 머지 규약(squash 만·`--delete-branch` 금지)은 /pr 미호출 세션의 머지 시점에도 필요해 **루트 CLAUDE.md 상시 코어**가 권위다.
 
 ## 동작
 
