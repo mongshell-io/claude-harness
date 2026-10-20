@@ -406,8 +406,8 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 MARKER="/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)"
 # 위험 경로: 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 항목(마이그레이션·요청 경로·CI 워크플로)에 닿는 변경 파일.
 # /pr 은 로컬 base 비교를 하지 않으므로(그 스킬의 제약) RANGE 를 이미 가진 여기서 계산해 marker 에 남긴다.
-# 실행 전 두 자리표시자를 권위 문서 값으로 치환한다 — <migration-dir> 는 DB 영역 CLAUDE.md, <request-path-file> 은 루트 CLAUDE.md
-# 스택 메모 (프로젝트 종속값 — 본문에 미기재). 미치환 상태로 돌면 regex 가 .github/ 외엔 못 잡아 Low 를 제안하는 fail-open 이
+# 실행 전 두 자리표시자를 권위 문서 값으로 치환한다 — <migration-dir> 는 DB 영역 CLAUDE.md(없는 프로젝트는 루트 CLAUDE.md 스택 메모),
+# <request-path-file> 은 루트 CLAUDE.md 스택 메모 (프로젝트 종속값 — 본문에 미기재). 미치환 상태로 돌면 regex 가 .github/ 외엔 못 잡아 Low 를 제안하는 fail-open 이
 # 되므로, '<' 가 남아 있으면 marker 를 기록하지 않고 stop 한다.
 RISKY_PATTERN='^(\.github/|<migration-dir>/|<request-path-file>$)'
 case "$RISKY_PATTERN" in *'<'*) echo "위험 경로 패턴 미치환 — marker 기록 중단 (권위 문서 값으로 치환 후 재실행)"; exit 1;; esac
