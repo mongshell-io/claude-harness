@@ -7,14 +7,19 @@
   openclaw-slack read TS|URL [--limit N]             스레드 전체 출력
   openclaw-slack recent [--limit N]                  채널 최근 글(스레드 시작점) 목록
 
-TS 자리에는 Slack 메시지 링크(.../archives/<채널>/p1792472468963739)도 받는다.
+TS 자리에는 Slack 메시지 링크(https://<워크스페이스>.slack.com/archives/<채널>/p…)도 받는다.
+
+출력 형식: 글마다 '=== [작성자] …' 헤더 줄, 본문은 모든 줄이 '│ ' 로 시작한다. 본문이 헤더나
+결과 줄(ts= · thread= · last_ts= · since=)을 흉내 낼 수 없게 하려는 것이다.
+작성자: Claude(나) · OpenClaw · 운영자(본인) · 제3자:<ID>
 
 종료 코드: 0 성공 · 2 대기 시간 초과 · 3 Slack API 오류 · 4 설정(토큰) 오류 · 64 사용법 오류
 
 설정 (환경변수로 덮어쓸 수 있다):
   OPENCLAW_SLACK_TOKEN    봇 토큰. 없으면 macOS 키체인(account=claude, service=slack-onuheim-claude-bot)
-  OPENCLAW_SLACK_CHANNEL  채널 ID (기본 C0650TKLGJ0 — #감바우에게-무엇이든-물어보세요)
-  OPENCLAW_SLACK_AGENT    OpenClaw 봇 사용자 ID (기본 U0C8Z50KM6K — @gambau)
+  OPENCLAW_SLACK_CHANNEL  채널 ID (기본 C0650TKLGJ0)
+  OPENCLAW_SLACK_AGENT    OpenClaw 봇 사용자 ID (기본 U0C8Z50KM6K)
+  OPENCLAW_SLACK_OWNER    운영자 본인 Slack 사용자 ID, 쉼표 구분 (기본 U064VMBS36H)
 
 토큰은 어떤 출력에도 싣지 않는다.
 """
@@ -22,6 +27,7 @@ TS 자리에는 Slack 메시지 링크(.../archives/<채널>/p1792472468963739)�
 import argparse
 import datetime
 import html
+import http.client
 import json
 import os
 import re
@@ -35,11 +41,15 @@ import urllib.request
 
 CHANNEL = os.environ.get("OPENCLAW_SLACK_CHANNEL", "C0650TKLGJ0")
 AGENT = os.environ.get("OPENCLAW_SLACK_AGENT", "U0C8Z50KM6K")
+OWNERS = set(filter(None, os.environ.get("OPENCLAW_SLACK_OWNER", "U064VMBS36H").split(",")))
 KEYCHAIN_ACCOUNT = "claude"
 KEYCHAIN_SERVICE = "slack-onuheim-claude-bot"
+SECURITY_BIN = "/usr/bin/security"
 KST = datetime.timezone(datetime.timedelta(hours=9))
+TS_RE = re.compile(r"\d+\.\d+")
 
 EXIT_TIMEOUT, EXIT_API, EXIT_CONFIG, EXIT_USAGE = 2, 3, 4, 64
+SELF = os.path.realpath(__file__)
 
 
 class SlackError(Exception):
@@ -51,7 +61,7 @@ def die(msg, code):
     sys.exit(code)
 
 
-# ---- 토큰 · API ----------------------------------------------------------
+# ---- 토큰 · TLS · API ------------------------------------------------------
 
 def load_token():
     token = os.environ.get("OPENCLAW_SLACK_TOKEN")
@@ -59,27 +69,27 @@ def load_token():
         return token.strip()
     try:
         out = subprocess.run(
-            ["security", "find-generic-password", "-a", KEYCHAIN_ACCOUNT, "-s", KEYCHAIN_SERVICE, "-w"],
+            [SECURITY_BIN, "find-generic-password", "-a", KEYCHAIN_ACCOUNT, "-s", KEYCHAIN_SERVICE, "-w"],
             capture_output=True, text=True, timeout=10,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         out = None
     if out is None or out.returncode != 0 or not out.stdout.strip():
-        die(
-            "봇 토큰이 없습니다. 플러그인 README 의 '새 PC 셋업' 대로 키체인에 넣거나 "
-            "OPENCLAW_SLACK_TOKEN 을 지정하세요.",
-            EXIT_CONFIG,
-        )
+        die("봇 토큰이 없습니다. 플러그인 README 의 '새 PC 셋업' 대로 키체인에 넣거나 "
+            "OPENCLAW_SLACK_TOKEN 을 지정하세요.", EXIT_CONFIG)
     return out.stdout.strip()
 
 
 def ssl_context():
-    """python.org 설치본 python3 는 인증서 묶음이 없어 HTTPS 가 실패한다 — macOS 시스템 루트를 직접 싣는다."""
+    """python.org 설치본 python3 는 인증서 묶음이 없어 HTTPS 가 실패한다 — macOS 시스템 루트를 직접 싣는다.
+
+    싣지 못해도 검증은 꺼지지 않는다(연결이 실패할 뿐). Apple 의 루트별 부분 불신 정책은 적용되지 않는다.
+    """
     ctx = ssl.create_default_context()
     if sys.platform == "darwin":
         try:
             pem = subprocess.run(
-                ["security", "find-certificate", "-a", "-p",
+                [SECURITY_BIN, "find-certificate", "-a", "-p",
                  "/System/Library/Keychains/SystemRootCertificates.keychain"],
                 capture_output=True, text=True, timeout=10,
             ).stdout
@@ -90,41 +100,58 @@ def ssl_context():
     return ctx
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None  # 토큰이 다른 호스트로 따라가지 않게 리다이렉트를 따르지 않는다
+
+
 class Slack:
+    RETRIES = 5
+
     def __init__(self, token):
         self._token = token
-        self._ctx = ssl_context()
+        self._opener = urllib.request.build_opener(
+            urllib.request.HTTPSHandler(context=ssl_context()), _NoRedirect)
 
     def call(self, method, params=None, post=False):
+        """Slack Web API 호출. 조회(GET)는 일시 오류를 재시도한다.
+
+        게시(POST)는 멱등이 아니라 429(게시 안 됨이 보장됨)만 재시도한다 — 그 밖의 오류는
+        게시됐을 수도 있으므로 재시도하지 않고 그대로 실패시킨다.
+        """
         params = params or {}
-        for attempt in range(5):
-            if post:
-                req = urllib.request.Request(
-                    f"https://slack.com/api/{method}",
-                    data=json.dumps(params).encode(),
-                    headers={"Content-Type": "application/json; charset=utf-8"},
-                )
-            else:
-                query = urllib.parse.urlencode(params)
-                req = urllib.request.Request(f"https://slack.com/api/{method}?{query}")
-            req.add_header("Authorization", f"Bearer {self._token}")
+        for attempt in range(self.RETRIES):
             try:
-                with urllib.request.urlopen(req, timeout=30, context=self._ctx) as resp:
-                    body = json.load(resp)
+                return self._once(method, params, post)
             except urllib.error.HTTPError as e:
                 if e.code == 429:
-                    time.sleep(int(e.headers.get("Retry-After", "5")))
+                    time.sleep(max(1, int(e.headers.get("Retry-After") or 5)))
                     continue
-                raise SlackError(f"{method}: HTTP {e.code}") from None
-            except urllib.error.URLError as e:
-                if attempt < 4:
+                if e.code >= 500 and not post and attempt < self.RETRIES - 1:
                     time.sleep(3)
                     continue
-                raise SlackError(f"{method}: 네트워크 오류 {e.reason}") from None
-            if not body.get("ok"):
-                raise SlackError(f"{method}: {body.get('error')}")
-            return body
+                raise SlackError(f"{method}: HTTP {e.code}") from None
+            except (urllib.error.URLError, OSError, http.client.HTTPException, ValueError) as e:
+                if not post and attempt < self.RETRIES - 1:
+                    time.sleep(3)
+                    continue
+                note = " — 게시됐을 수 있으니 recent/read 로 확인한 뒤 다시 올리세요" if post else ""
+                raise SlackError(f"{method}: 네트워크 오류 {getattr(e, 'reason', e)}{note}") from None
         raise SlackError(f"{method}: 재시도 한도 초과")
+
+    def _once(self, method, params, post):
+        if post:
+            req = urllib.request.Request(
+                f"https://slack.com/api/{method}", data=json.dumps(params).encode(),
+                headers={"Content-Type": "application/json; charset=utf-8"})
+        else:
+            req = urllib.request.Request(f"https://slack.com/api/{method}?{urllib.parse.urlencode(params)}")
+        req.add_unredirected_header("Authorization", f"Bearer {self._token}")
+        with self._opener.open(req, timeout=30) as resp:
+            body = json.load(resp)
+        if not body.get("ok"):
+            raise SlackError(f"{method}: {body.get('error')}")
+        return body
 
     def thread(self, ts):
         messages, cursor = [], None
@@ -141,22 +168,23 @@ class Slack:
 
 # ---- 표시 ----------------------------------------------------------------
 
-_names = {}
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]|\x1b\[[0-9;?]*[A-Za-z]")
 
 
-def author(slack, msg, me):
+def clean(text):
+    return _CONTROL.sub("", text)
+
+
+def author(msg, me):
     uid = msg.get("user") or msg.get("bot_id") or "?"
     if uid == AGENT:
         return "OpenClaw"
     if uid == me:
         return "Claude(나)"
-    if uid not in _names:
-        try:
-            prof = slack.call("users.info", {"user": uid})["user"]["profile"]
-            _names[uid] = prof.get("display_name") or prof.get("real_name") or uid
-        except SlackError:
-            _names[uid] = uid
-    return f"사용자:{_names[uid]}"
+    if uid in OWNERS:
+        return "운영자(본인)"
+    # 표시 이름은 누구나 바꿀 수 있어 신원 판정에 쓰지 않는다 — ID 로만 적는다.
+    return f"제3자:{uid}"
 
 
 def plan_state(msg):
@@ -174,14 +202,14 @@ def body_text(msg):
         text = text[len(title) + 1:]
     text = re.sub(r"<(https?://[^|>]+)\|([^>]+)>", r"\2 (\1)", text)
     text = text.replace(f"<@{AGENT}>", "@OpenClaw")
-    return html.unescape(text)
+    return clean(html.unescape(text))
 
 
 def stamp(ts):
     return datetime.datetime.fromtimestamp(float(ts), KST).strftime("%m-%d %H:%M:%S")
 
 
-def render(slack, msg, me):
+def render(msg, me):
     _, statuses = plan_state(msg)
     tags = []
     if msg.get("streaming_state"):
@@ -189,29 +217,34 @@ def render(slack, msg, me):
     if statuses:
         tags.append("plan=" + ",".join(s or "?" for s in statuses))
     tag = f" [{' '.join(tags)}]" if tags else ""
-    print(f"--- {author(slack, msg, me)} · {stamp(msg['ts'])} KST · ts={msg['ts']}{tag}")
-    print(body_text(msg))
+    print(f"=== [{author(msg, me)}] {stamp(msg['ts'])} KST ts={msg['ts']}{tag}")
+    for line in body_text(msg).split("\n"):
+        print(f"│ {line}")
 
 
 # ---- 인자 ----------------------------------------------------------------
 
 def parse_ts(value):
-    if re.fullmatch(r"\d+\.\d+", value):
+    if TS_RE.fullmatch(value):
         return value
-    m = re.search(r"/archives/([A-Z0-9]+)/p(\d{10})(\d{6})", value)
-    if m:
-        if m.group(1) != CHANNEL:
-            die(f"링크의 채널 {m.group(1)} 이 설정 채널 {CHANNEL} 과 다릅니다.", EXIT_USAGE)
-        # 스레드 답글 링크면 thread_ts 쿼리가 스레드 시작점이다.
-        q = urllib.parse.parse_qs(urllib.parse.urlparse(value).query)
-        if q.get("thread_ts"):
-            return q["thread_ts"][0]
-        return f"{m.group(2)}.{m.group(3)}"
-    die(f"TS 또는 Slack 메시지 링크가 아닙니다: {value}", EXIT_USAGE)
+    url = urllib.parse.urlparse(value)
+    m = re.fullmatch(r"/archives/([A-Z0-9]+)/p(\d{10})(\d{6})", url.path)
+    if url.scheme != "https" or not (url.hostname or "").endswith(".slack.com") or not m:
+        die(f"TS 또는 Slack 메시지 링크가 아닙니다: {value}", EXIT_USAGE)
+    if m.group(1) != CHANNEL:
+        die(f"링크의 채널 {m.group(1)} 이 설정 채널 {CHANNEL} 과 다릅니다.", EXIT_USAGE)
+    # 스레드 답글 링크면 thread_ts 쿼리가 스레드 시작점이다.
+    thread_ts = urllib.parse.parse_qs(url.query).get("thread_ts", [None])[0]
+    if thread_ts is not None:
+        if not TS_RE.fullmatch(thread_ts):
+            die(f"링크의 thread_ts 가 TS 형식이 아닙니다: {thread_ts}", EXIT_USAGE)
+        return thread_ts
+    return f"{m.group(2)}.{m.group(3)}"
 
 
-def thread_root(msg):
-    return msg.get("thread_ts") or msg["ts"]
+def escape_mrkdwn(text):
+    # 본문 속 <!channel>·<@U…>·<url|라벨> 이 살아 있는 Slack 문법으로 해석되지 않게 한다.
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 # ---- 명령 ----------------------------------------------------------------
@@ -221,55 +254,71 @@ def cmd_ask(slack, me, args):
     text = text.strip()
     if not text:
         die("보낼 본문이 비었습니다.", EXIT_USAGE)
-    mention = f"<@{AGENT}>"
-    # OpenClaw 는 이 채널에서 봇 메시지를 '자기를 멘션한 것' 만 받는다(allowBots: mentions).
-    if mention not in text:
-        text = f"{mention} {text}"
-    params = {"channel": CHANNEL, "text": text, "unfurl_links": False, "unfurl_media": False}
+    # OpenClaw 는 이 채널에서 봇 글을 '자기를 멘션한 것' 만 받는다(allowBots: mentions) — 항상 앞에 붙인다.
+    params = {"channel": CHANNEL, "text": f"<@{AGENT}> {escape_mrkdwn(text)}",
+              "unfurl_links": False, "unfurl_media": False}
     if args.thread:
         params["thread_ts"] = args.thread
     posted = slack.call("chat.postMessage", params, post=True)
     ts = posted["ts"]
-    thread = params.get("thread_ts", ts)
+    thread = (posted.get("message") or {}).get("thread_ts") or ts
     print(f"ts={ts}")
     print(f"thread={thread}")
-    print(f"다음: openclaw-slack wait {thread} --since {ts}")
+    print(f"다음: {SELF} wait {thread} --since {ts}")
+
+
+def _agent_snapshot(messages, since):
+    """기준점 이후 OpenClaw 글의 (ts, 본문 길이, 스트리밍 상태) 목록."""
+    return [(m["ts"], len(m.get("text") or ""), m.get("streaming_state"))
+            for m in messages if m.get("user") == AGENT and float(m["ts"]) > float(since)]
+
+
+def _timeout_hint(messages, me, since, first_snapshot, last_snapshot):
+    writing = [s for s in last_snapshot if s[2] == "in_progress"]
+    if writing:
+        if writing == [s for s in first_snapshot if s[2] == "in_progress"]:
+            return ("OpenClaw 글이 in_progress 인데 대기 내내 내용이 그대로입니다 — 멈췄을 수 있습니다. "
+                    "read 로 확인하고 사용자에게 알리세요.")
+        return "OpenClaw 가 아직 답을 쓰는 중입니다(in_progress). 같은 --since 로 다시 wait 하세요."
+    # 👀 는 OpenClaw 가 요청을 받았다는 표시다 — 기준점 이전의 내 마지막 요청에서 찾는다.
+    asked = [m for m in messages if m.get("user") == me and float(m["ts"]) <= float(since)]
+    request = asked[-1] if asked else (messages[0] if messages else {})
+    if any(r.get("name") == "eyes" for r in request.get("reactions", [])):
+        return "OpenClaw 가 요청을 받았지만(👀) 아직 답글이 없습니다. 다시 wait 하세요."
+    return ("👀 반응도 없습니다 — OpenClaw 가 메시지를 받지 못했을 수 있습니다. "
+            "멘션·봇 채널 멤버십·OpenClaw 의 allowBots 설정을 확인하세요.")
 
 
 def cmd_wait(slack, me, args):
-    thread = args.ts
-    since = args.since
+    thread, since = args.ts, args.since
     if since is None:
         # 기본 기준점 = 이 스레드에서 내가 마지막으로 쓴 글. ask 직후 바로 wait 해도 답을 놓치지 않는다.
         mine = [m["ts"] for m in slack.thread(thread) if m.get("user") == me]
         since = mine[-1] if mine else thread
     deadline = time.monotonic() + args.timeout
+    first = previous = None
     while True:
         messages = slack.thread(thread)
-        new = [m for m in messages if float(m["ts"]) > float(since)]
-        agent_new = [m for m in new if m.get("user") == AGENT]
-        if agent_new and agent_new[-1].get("streaming_state") != "in_progress":
-            for m in new:
-                render(slack, m, me)
-            print(f"\nlast_ts={new[-1]['ts']}")
+        snapshot = _agent_snapshot(messages, since)
+        first = snapshot if first is None else first
+        done = snapshot and all(s[2] != "in_progress" for s in snapshot)
+        # 긴 답이 글 여러 개로 나뉘어 올라오는 틈에 걸리지 않게, 두 번 연속 같은 모양일 때만 완료로 본다.
+        # 대기 시간이 끝났으면 한 번만 본 모양이라도 다 쓰인 답은 돌려준다.
+        timed_out = time.monotonic() >= deadline
+        if done and (snapshot == previous or timed_out):
+            for m in messages:
+                if float(m["ts"]) > float(since):
+                    render(m, me)
+            print(f"\nlast_ts={messages[-1]['ts']}")
             return
-        if time.monotonic() >= deadline:
+        previous = snapshot
+        if timed_out:
             break
         time.sleep(args.interval)
-    # 👀 는 OpenClaw 가 요청을 받았다는 표시다 — 기준점 이전의 내 마지막 요청에서 찾는다.
-    asked = [m for m in messages if m.get("user") == me and float(m["ts"]) <= float(since)]
-    request = asked[-1] if asked else next((m for m in messages if m["ts"] == thread), {})
-    seen = any(r.get("name") == "eyes" for r in request.get("reactions", []))
-    for m in new:
-        render(slack, m, me)
-    if agent_new:
-        hint = "OpenClaw 가 아직 답을 쓰는 중입니다(in_progress). 같은 --since 로 다시 wait 하세요."
-    elif seen:
-        hint = "OpenClaw 가 요청을 받았지만(👀) 아직 답글이 없습니다. 다시 wait 하세요."
-    else:
-        hint = ("👀 반응도 없습니다 — OpenClaw 가 메시지를 받지 못했을 수 있습니다. "
-                "멘션·봇 채널 멤버십·OpenClaw 의 allowBots 설정을 확인하세요.")
-    print(f"\n시간 초과({args.timeout}초). {hint}")
+    for m in messages:
+        if float(m["ts"]) > float(since):
+            render(m, me)
+    print(f"\n시간 초과({args.timeout}초). {_timeout_hint(messages, me, since, first, snapshot)}")
     print(f"since={since}")
     sys.exit(EXIT_TIMEOUT)
 
@@ -279,7 +328,7 @@ def cmd_read(slack, me, args):
     if args.limit:
         messages = messages[:1] + messages[1:][-args.limit:]
     for m in messages:
-        render(slack, m, me)
+        render(m, me)
     if messages:
         print(f"\nlast_ts={messages[-1]['ts']}")
 
@@ -290,11 +339,22 @@ def cmd_recent(slack, me, args):
         if m.get("subtype") in ("channel_join", "channel_leave"):
             continue
         first = body_text(m).replace("\n", " ")[:80]
-        print(f"{stamp(m['ts'])}  ts={thread_root(m)}  답글 {m.get('reply_count', 0):>2}  "
-              f"{author(slack, m, me)}: {first}")
+        print(f"{stamp(m['ts'])} ts={m.get('thread_ts') or m['ts']} 답글={m.get('reply_count', 0)} "
+              f"[{author(m, me)}] │ {first}")
 
 
-def main():
+# ---- 진입점 ----------------------------------------------------------------
+
+def _positive(minimum):
+    def check(value):
+        n = int(value)
+        if n < minimum:
+            raise argparse.ArgumentTypeError(f"{minimum} 이상이어야 합니다: {value}")
+        return n
+    return check
+
+
+def parse_args():
     p = argparse.ArgumentParser(prog="openclaw-slack", description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -304,22 +364,29 @@ def main():
     w = sub.add_parser("wait")
     w.add_argument("ts")
     w.add_argument("--since")
-    w.add_argument("--timeout", type=int, default=600)
-    w.add_argument("--interval", type=int, default=15)
+    w.add_argument("--timeout", type=_positive(0), default=600)
+    w.add_argument("--interval", type=_positive(1), default=15)
     r = sub.add_parser("read")
     r.add_argument("ts")
-    r.add_argument("--limit", type=int)
+    r.add_argument("--limit", type=_positive(1))
     c = sub.add_parser("recent")
-    c.add_argument("--limit", type=int, default=10)
-    args = p.parse_args()
+    c.add_argument("--limit", type=_positive(1), default=10)
+    try:
+        args = p.parse_args()
+    except SystemExit as e:
+        sys.exit(EXIT_USAGE if e.code else 0)
     # 사용법 오류는 네트워크 전에 거른다.
     if getattr(args, "ts", None):
         args.ts = parse_ts(args.ts)
     if getattr(args, "thread", None):
         args.thread = parse_ts(args.thread)
-    if getattr(args, "since", None) and not re.fullmatch(r"\d+\.\d+", args.since):
+    if getattr(args, "since", None) and not TS_RE.fullmatch(args.since):
         die(f"--since 는 TS 여야 합니다: {args.since}", EXIT_USAGE)
+    return args
 
+
+def main():
+    args = parse_args()
     slack = Slack(load_token())
     try:
         me = slack.call("auth.test")["user_id"]
@@ -327,7 +394,7 @@ def main():
     except SlackError as e:
         hint = ""
         if "not_in_channel" in str(e):
-            hint = " — 채널에서 /invite @Mongshell-Claude 가 필요합니다."
+            hint = " — 채널에서 봇 초대(/invite)가 필요합니다."
         elif "invalid_auth" in str(e) or "token_revoked" in str(e):
             hint = " — 토큰이 무효입니다. README 의 '새 PC 셋업' 으로 다시 넣으세요."
         die(f"{e}{hint}", EXIT_API)
