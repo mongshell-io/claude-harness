@@ -1,13 +1,13 @@
-<!-- harness-core: 2026-08 — 이 마커는 소비 프로젝트 복사본에 함께 남는다.
+<!-- harness-core: 2026-10 — 이 마커는 소비 프로젝트 복사본에 함께 남는다.
      낡음 판정: 이 파일(${CLAUDE_PLUGIN_ROOT}/references/claude-md-core.md)의 마커와 비교. -->
 
 # 루트 CLAUDE.md 상시 코어 (정본)
 
-플러그인은 세션에 상시 로드되는 컨텍스트를 주입할 수 없다 (플러그인 CLAUDE.md 는 로드되지 않음 — 공식 문서). 하네스가 전제하는 상시 규칙은 각 소비 프로젝트의 **루트 `CLAUDE.md`** 에 산다. 아래 블록을 복사해 삽입하되, 프로젝트에 이미 동등 조항이 있으면 중복 추가하지 않는다.
+플러그인은 세션에 상시 로드되는 컨텍스트를 주입할 수 없다 (플러그인 CLAUDE.md 는 로드되지 않음 — 공식 문서). 하네스가 전제하는 상시 규칙은 각 소비 프로젝트의 **루트 `CLAUDE.md`** 에 산다. 아래 블록을 복사해 삽입하되, 프로젝트에 이미 동등 조항이 있으면 중복 추가하지 않는다. **정책 노브 줄만 프로젝트 값으로 채우고**("(예: …)" 자리) 나머지 줄은 정본과 바이트 동일하게 유지한다 — 낡음 판정은 마커만 보므로 본문 드리프트는 사람이 막는다.
 
 ```markdown
 ## 작업 규약 코어 (하네스 상시 규칙)
-<!-- harness-core: 2026-08 -->
+<!-- harness-core: 2026-10 -->
 
 - **오케스트레이터**: 메인 세션은 탐색·계획·서브에이전트 관리·사용자 소통이 주 역할,
   실질 구현은 developer, 검토는 reviewer 에이전트에 위임. 위임으로 병렬성·컨텍스트 격리·
@@ -21,9 +21,13 @@
   트리거는 새 화면·큰 레이아웃 재구성만, 기본값 skip, 게이트락 아님. 사용자 "목업 먼저"
   pull 로 양방향 오버라이드 가능. 목업 합의 후 (필요 시) architect → developer 로 이어지며,
   상수·절차 권위는 컴포넌트 영역 CLAUDE.md.
-- **머지 규약** (worktree 워크플로우 전제): PR 머지는 `gh pr merge <N> --squash` 만 —
-  `--delete-branch` 금지 (worktree 의 `main` 점유와 충돌; remote 브랜치는 repo 설정
-  `delete_branch_on_merge` 가 자동 삭제).
+- **머지 규약** (worktree 워크플로우 전제): PR 머지는 squash 만 — 사람이 머지할 때는
+  `gh pr merge <N> --squash`, 자동 머지 수단이 있는 프로젝트는 그것도 squash 로 제한(수단·라벨
+  권위는 프로젝트 CI 설정). `--delete-branch` 금지 (worktree 의 `main` 점유와 충돌; remote
+  브랜치는 repo 설정 `delete_branch_on_merge` 가 자동 삭제).
+- **위험 등급**: PR 의 위험은 작성자가 아니라 **변경 파일**이 정한다. DB 마이그레이션·요청 경로
+  (proxy/middleware)·CI 워크플로(`.github/`) 변경은 사람이 적용 순서를 확인하고 머지하며, 자동
+  머지 수단이 있으면 그 대상에서 뺀다. 그 순서와 되돌리는 법은 PR 본문 Risk / How to revert 에 적는다.
 - **정책 노브**: 커밋/PR trailer 포함 여부는 이 문서가 권위 (예: `Co-Authored-By` 포함,
   `🤖 Generated with Claude Code` 미포함). 응답 톤(예: 항상 존댓말)과 커밋 메시지
   언어(예: 한국어 conventional commits)도 이 문서가 권위.

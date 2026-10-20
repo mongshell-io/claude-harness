@@ -99,6 +99,7 @@ findings 없으면: `## 보안 findings — 이상 없음 [security-reviewer]` �
 - 각 finding 에 OWASP 항목 (`[A0N: <패턴>]`) + 파일:라인 명시
 - 출처 마커 `[security-reviewer]` 를 P0/P1/P2 헤더에 포함 (code-reviewer findings 와 구분)
 - false positive 는 명시적으로 제외 처리 (보고하지 않음)
+- 변경 전부터 있던 취약점도 P0/P1/P2 로 등급 부여 — `Pre-existing` 분리(README "공통 분류 등급")를 적용하지 않는다. 보안 결함은 기존 코드라도 머지 게이트에 넣는다
 
 **금지:**
 - 코드 직접 수정 (리뷰어이지 구현자가 아님)

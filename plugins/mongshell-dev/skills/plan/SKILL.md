@@ -204,10 +204,10 @@ wait
 ### Iteration 별 결과
 - Iteration 1
   - developer: #N, #P (병렬 위임)
-  - 자동 리뷰 reviewer: P0 K개 / P1 L개 / P2 M개
+  - 자동 리뷰 reviewer: P0 K개 / P1 L개 / P2 M개 · Pre-existing J개
 - Iteration 2 (있으면)
   - developer: <P0 피드백 대상 이슈>
-  - 자동 리뷰 reviewer: P0 K'개 / P1 L'개 / P2 M'개
+  - 자동 리뷰 reviewer: P0 K'개 / P1 L'개 / P2 M'개 · Pre-existing J'개
 - Iteration 3 (있으면)
   - ...
 
@@ -219,7 +219,7 @@ wait
 
 다음 단계:
 1. 잔여 P0 가 있으면 (루프 3회 소진 시) "Round N+1 진행" 으로 알려주세요.
-2. P1 은 `/create-issue` 등록을 권장하고, P2 는 qa 의 "P2 라운드 종결 규칙"(조건부 유예)을 따릅니다. 같은 라운드 자동 처리를 원하면 "P1 도 돌려줘" 로 알려주세요.
+2. P1 과 Pre-existing(이 라운드가 만들지 않은 결함) 은 `/create-issue` 등록을 권장하고, P2 는 qa 의 "P2 라운드 종결 규칙"(조건부 유예)을 따릅니다. 같은 라운드 자동 처리를 원하면 "P1 도 돌려줘" 로 알려주세요.
 3. 모든 라운드 완료 후 `/qa --branch` 로 사이클 종합 검증(build 포함)을 진행합니다 — `/qa` 의 책임 경계는 [qa/SKILL.md](../qa/SKILL.md) 의 "/plan 자동 iteration 과의 책임 경계" 섹션 참조.
 ```
 
