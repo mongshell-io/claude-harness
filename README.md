@@ -2,6 +2,8 @@
 
 Mongshell 의 개인용 Claude Code 개발 하네스 SSOT. 단일 원본은 [plugins/mongshell-dev/](plugins/mongshell-dev/) 이고, 배포 채널은 둘입니다.
 
+> 같은 마켓플레이스에 **운영 도구 플러그인 [mongshell-ops](plugins/mongshell-ops/)** 도 있습니다 — 개발 절차가 아니라 OpenClaw 등 외부 운영 시스템과 Claude Code 를 잇는 도구이고, 플러그인 채널로만 배포합니다(vendored 대상 아님). 설치·셋업은 그 README.
+
 | 채널 | 대상 | 받는 방법 | 갱신 |
 |---|---|---|---|
 | **플러그인** (기본) | 내 프로젝트 전부 | `/plugin install mongshell-dev@mongshell` | autoUpdate — SSOT push 가 곧 반영 |
@@ -91,6 +93,9 @@ claude-harness/
 │   ├── skills/                       #   create-issue·plan·pr·qa·release·review-comments
 │   ├── references/                   #   required-docs(이식 계약)·infra-gotchas(인프라 함정)
 │   └── scripts/                      #   decisions 인덱스·버전 검증
+├── plugins/mongshell-ops/            # 운영 도구 (플러그인 채널 전용)
+│   ├── skills/openclaw/              #   OpenClaw 에게 Slack 으로 요청·답 대기
+│   └── scripts/openclaw-slack        #   Slack Web API 호출 (ask·wait·read·recent)
 ├── sync-harness.sh                   # vendored 예외 채널
 └── README.md
 ```
