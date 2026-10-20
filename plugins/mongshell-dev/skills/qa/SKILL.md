@@ -347,6 +347,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 ## QA 리포트 — YYYY-MM-DD
 
 **검증 범위**: <인자> (<git diff 대상>)
+**발견**: N건 (P0 a · P1 b · P2 c) · Pre-existing d — N = a+b+c. 없으면 "0건 — 고칠 것 없음"
 
 > 도구별 실행/스킵 상태는 아래 "검증 결과 요약" 표가 단일 표기 지점.
 
@@ -405,19 +406,19 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 MARKER="/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)"
 # 위험 경로: 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 항목(마이그레이션·요청 경로·CI 워크플로)에 닿는 변경 파일.
 # /pr 은 로컬 base 비교를 하지 않으므로(그 스킬의 제약) RANGE 를 이미 가진 여기서 계산해 marker 에 남긴다.
-# 아래 패턴은 Drizzle + Next.js 프로젝트의 예 — <migration-dir> 권위는 DB 영역 CLAUDE.md.
-RISKY=$(git diff --name-only $RANGE | grep -E '^(\.github/|drizzle/|src/proxy\.ts$|src/middleware\.ts$)' | tr '\n' ' ')
-cat > "$MARKER" <<'EOF'
-발견 N건 (P0 0 · P1 b · P2 c · Pre-existing d) — /qa --branch YYYY-MM-DD
-- 미해결 P1: file:line — 한 줄 사유 (없으면 "없음")
-- Pre-existing: file:line — 한 줄 (없으면 "없음")
-- 위험 경로: <$RISKY 값 — 비어 있으면 "없음">
+# <migration-dir> 권위는 DB 영역 CLAUDE.md, <request-path-file> 권위는 루트 CLAUDE.md 스택 메모 (프로젝트 종속값 — 본문에 미기재).
+RISKY=$(git diff --name-only $RANGE | grep -E '^(\.github/|<migration-dir>/|<request-path-file>$)' | tr '\n' ' ')
+cat > "$MARKER" <<EOF
+발견 <N>건 (P0 0 · P1 <b> · P2 <c>) · Pre-existing <d> — /qa --branch <YYYY-MM-DD>
+- 미해결 P1: <file:line — 한 줄 사유. 없으면 "없음">
+- Pre-existing: <file:line — 한 줄. 없으면 "없음">
+- 위험 경로: ${RISKY:-없음}
 EOF
 ```
 
-(위 heredoc 은 템플릿 — 실제 값으로 채워 기록한다. 발견 0건이면 첫 줄은 "발견 0건 — 고칠 것 없음". 위험 경로가 있으면 /pr 이 Risk 를 High 로 제안한다.)
+(`<…>` 자리만 Step 5 리포트의 **발견** 줄과 findings 에서 옮겨 채운다. 발견 0건이면 첫 줄은 "발견 0건 — 고칠 것 없음". 위험 경로 줄은 셸이 채운다 — 손으로 쓰지 않는다. 위험 경로가 있으면 /pr 이 Risk 를 High 로 제안한다.)
 
-한 줄 안내(사용자 출력): "QA 통과 marker 기록 — /pr Step 0 게이트에서 확인됨"
+한 줄 안내(사용자 출력): "QA 통과 marker 기록 — /pr Step 0 게이트 + Step 2 'QA 발견 요약' 에서 사용됨"
 
 - 기본(uncommitted) 호출은 부분 검증이라 PR 범위를 보증하지 못하므로 marker 를 기록하지 않는다.
 
@@ -507,7 +508,7 @@ git diff "${LAST_QA_SHA}..HEAD" --name-only --diff-filter=d > "$QA_TMP/reverify-
 출력 제약:
 - 각 finding 은 파일:line + 1문장으로 표현. 설명 이상의 서술 금지.
 - 통과 항목(수정 확인됨) 서술 금지.
-- 리포트는 findings 목록과 요약 카운트(P0/P1/P2 건수)만 포함.
+- 리포트는 findings 목록과 요약 카운트(P0/P1/P2/Pre-existing 건수)만 포함.
 ```
 
 **4. 풀 검증 항목 승계 원칙**
@@ -524,6 +525,8 @@ security-reviewer / build 등 `--branch` 전용 항목과 외부 LLM 리뷰(`--g
 ### marker 합성 판정
 
 재검증 모드의 marker 기록 조건: "풀 라운드 1회 + 후속 재검증(들)" 의 합성 결과로 P0==0 이면 최종 HEAD 에 기록한다. 리포트 헤더에 "합성 판정 (풀 라운드 + 재검증 N회)" 임을 명시한다.
+
+marker 내용은 Step 5 와 동일한 형식이다 — 개수는 승계 도메인 + 재실행 도메인의 합성값, 위험 경로는 `RANGE=main...HEAD` 로 다시 계산한다 (수정 diff 범위 `LAST_QA_SHA..HEAD` 가 아니다 — PR 전체의 위험이므로).
 
 ### 재검증 리포트 헤더
 

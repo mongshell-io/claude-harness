@@ -8,7 +8,7 @@ description: >-
 
 # /pr
 
-GitHub PR 생성의 단일 진입점. 브랜치명(1순위) 또는 커밋 메시지(보조)에서 `Closes #N` 을 자동 검출하고 PR 을 만든다. Summary / Test plan 본문은 사용자가 자유 작성한다.
+GitHub PR 생성의 단일 진입점. 브랜치명(1순위) 또는 커밋 메시지(보조)에서 `Closes #N` 을 자동 검출하고 PR 을 만든다. Summary / Test plan / Risk / How to revert 는 사용자가 자유 작성하고, QA 발견 요약은 `/qa --branch` marker 내용을 그대로 싣는다.
 
 ## 언제 호출하는가
 
@@ -103,23 +103,30 @@ QA_SUMMARY=$(cat "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)"
 
 ## Risk
 <Low / Medium / High> — <한 줄 이유. $QA_SUMMARY 의 "위험 경로" 가 "없음" 이 아니면 High 로 제안하고 그 경로를 적는다.
-High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). 등급 기준은 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 항목>
+High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). High 조건만 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 이 정의한다 —
+Low/Medium 은 사용자 판단(기본 제안 Low)>
 
 ## How to revert
 <squash 커밋 revert 로 끝나는가, 아니면 마이그레이션·데이터 되돌림이 따로 필요한가 — 한두 줄>
 
 ## QA 발견 요약
-<$QA_SUMMARY 그대로 — 발견 N건 (P0 0 · P1 b · P2 c · Pre-existing d) + 미해결 P1 사유 + Pre-existing>
+<$QA_SUMMARY 그대로 — 발견 N건 (P0 0 · P1 b · P2 c) · Pre-existing d + 미해결 P1 사유 + Pre-existing>
 
 Closes #N
 ```
 
-Risk / How to revert 는 PR 템플릿(`.github/pull_request_template.md`)이 있으면 그 제목을 그대로 쓴다. 리뷰 발견은 PR 전 `/qa` 에서만 돌므로, 이 두 절과 QA 발견 요약이 "어느 층이 무엇을 봤고 무엇을 남겼는가" 를 PR 에 남기는 유일한 기록이다.
+Risk / How to revert 는 PR 템플릿(`.github/pull_request_template.md`)이 있으면 그 제목을 그대로 쓴다. 자동 리뷰어는 PR 생성 후에는 돌지 않으므로, 이 두 절과 QA 발견 요약이 "어느 층이 무엇을 봤고 무엇을 남겼는가" 를 PR 에 남기는 유일한 기록이다.
 
 QA marker 부재 상태에서 사용자가 'skip' 으로 진행한 경우, "QA 발견 요약" 절 본문 대신 다음 라인을 자동 포함한다:
 
 ```
 > ⚠️ QA marker 없음 — 사용자 skip 으로 진행 (qa 미통과 상태에서 PR 생성)
+```
+
+같은 경우 "Risk" 절의 등급 자리에는 다음 라인을 넣는다 — `/pr` 은 변경 파일을 계산하지 않으므로(아래 로컬 base 비교 금지) 위험 경로를 산출할 주체가 없고, 판정은 사용자 몫이다:
+
+```
+> ⚠️ QA marker 없음 — 위험 경로 미산출. 변경 파일(마이그레이션·요청 경로·CI 워크플로) 기준으로 직접 판정
 ```
 
 미리보기 출력 후 사용자가 자유 편집한 최종 본문을 받아 다음 단계로 진행한다.

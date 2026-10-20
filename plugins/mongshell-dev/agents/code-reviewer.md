@@ -105,7 +105,7 @@ grep 에서 결과가 나오면 P1 후보 — 의도된 것인지 확인 후 분
 
 ```markdown
 ## 요약
-발견 N건 (P0 a · P1 b · P2 c · Pre-existing d) — 고칠 것이 없으면 "고칠 것 없음" 이라고 분명히 쓴다
+발견 N건 (P0 a · P1 b · P2 c) · Pre-existing d — N = a+b+c (Pre-existing 은 합산 밖). 고칠 것이 없으면 "고칠 것 없음" 이라고 분명히 쓴다
 [변경 사항 한눈에]
 
 ## 변경 파일
