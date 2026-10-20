@@ -86,10 +86,17 @@ flowchart LR
 |---|---|---|
 | 프로젝트 toolchain 입력 코드 | `code-reviewer` | 활성 |
 | 프로젝트 toolchain 입력 코드 | `security-reviewer` | 활성 * |
-| 사용자/외부 독자 향 문서 (`**/*.md` 중 하네스 루트 밖 — 예: `docs/**/*.md`, 루트 + 영역별 `CLAUDE.md`, 기타 `README.md`) | `doc-reviewer` | 활성 |
+| 사용자/외부 독자 향 문서 (`**/*.md` 중 하네스 루트 밖 — 예: `docs/**/*.md`, 루트 + 영역별 `CLAUDE.md`, 기타 `README.md`, SSOT 저장소 자체의 루트 `README.md`) | `doc-reviewer` | 활성 |
 | 하네스 파일 (하네스 루트 아래 `**/*.md` — agents / skills / README / required-docs) | `harness-reviewer` | 활성 |
 
 > \* `security-reviewer` 의 `/plan` 루프 제외 등 호출시점 정책은 qa 스킬의 "/plan 자동 iteration 과의 책임 경계" 표 참조.
+
+> **하네스 루트 정의** (이 표와 reviewer·`/qa` 의 도메인 판정이 공통으로 쓰는 권위):
+> - **vendored 소비 프로젝트** — `.claude/` 하나 (`.claude/.harness` 마커로 판정).
+> - **하네스 SSOT 저장소** (`plugins/mongshell-dev/.claude-plugin/plugin.json` 이 있는 저장소) — `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부. 개발 하네스(이 플러그인)뿐 아니라 같은 저장소의 다른 플러그인(운영 도구 등)도 harness-reviewer 로 간다 — 새 플러그인도 `plugin.json` 만 있으면 따로 등록하지 않아도 이 도메인에 든다.
+> - **플러그인 소비 프로젝트** — 없음 (harness 도메인 공집합). 자기 `plugins/<이름>/` 이나 `plugin.json` 을 가진 프로젝트라도 SSOT 저장소가 아니면 마찬가지다.
+>
+> 공통 정의(이 README 의 라우팅·공통 분류 등급·작성 가이드, `references/required-docs.md`)의 위치는 **개발 하네스 루트**(vendored `.claude/`, SSOT `plugins/mongshell-dev/`) 하나다. 판정 명령은 harness-reviewer `## 입력 도메인` 과 `/qa` Step 1 이 같은 블록을 쓴다.
 
 > **코드 도메인 정의**: "프로젝트 toolchain 입력 코드" 의 구체 확장자는 영역별 `CLAUDE.md` 또는 `docs/development.md` 의 lint/typecheck/test 명령 대상이 권위. toolchain 외 파일 (이미지/lock/data 등) 의 처리는 아래 "도메인 외 입력 정책" 참조.
 
@@ -177,6 +184,8 @@ skill / agent 가 참조하는 프로젝트 권위 문서(`docs/**`, 영역별 `
 ## 본문 작성 가이드 — 진입 금지 도메인 키워드
 
 이 하네스 본문에 들어가면 안 되는 도메인 키워드. 새 agent/skill 작성 또는 기존 파일 수정 시 참조.
+
+**적용 범위**: 임의의 소비 프로젝트로 배포되는 개발 하네스(이 플러그인과 그 vendored 사본) 한정. 같은 SSOT 저장소의 다른 플러그인은 특정 운영 환경을 잇는 것이 목적이라 채널·봇 ID 같은 개인 운영 값을 담을 수 있다.
 
 - **영역별 경로** — 예: `docs/`, `src/lib/`, `src/components/`, `src/app/api/` 등 프로젝트 종속 경로. 대신 "영역별 `CLAUDE.md`" / "프로젝트 디렉토리" 등으로 일반화.
 - **빌드/검증 명령어** — 프로젝트 스택 종속 명령 (`pnpm test:run`, `pnpm typecheck`, `pnpm lint`, `pnpm db:push`, `pnpm build` 등). 대신 "테스트 명령", "typecheck 명령", "lint 명령" 등 역할 표현 + "구체 명령은 `docs/development.md` 또는 영역별 `CLAUDE.md` 권위" 위임.

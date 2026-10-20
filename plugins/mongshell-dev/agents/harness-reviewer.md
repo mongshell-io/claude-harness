@@ -14,10 +14,14 @@ tools: Read, Grep, Glob, Bash
 
 하네스 루트 아래의 모든 `.md`. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md` 의 "Reviewer 라우팅" 섹션이 단일 권위.
 
-**하네스 루트(`$H`)** 는 실행 위치에 따라 다르다 — vendored 소비 프로젝트에서는 `.claude/`, 하네스 SSOT 저장소에서는 `plugins/mongshell-dev/` 다. 하네스 수정이 SSOT 에서 일어나므로 거기서 검증이 안 걸리면 사실상 어디서도 안 걸린다. 아래 명령들은 이 한 줄로 루트를 확정한 뒤 사용한다:
+**하네스 루트** 의 정의 — vendored 소비 프로젝트 `.claude/`, 하네스 SSOT 저장소 `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부, 플러그인 소비 프로젝트 없음 — 는 같은 "Reviewer 라우팅" 섹션이 권위다. SSOT 에서 개발 하네스 밖 플러그인까지 받는 건 스킬·에이전트 frontmatter 와 R&R 검증이 플러그인 종류와 무관하기 때문이고, 하네스 수정이 SSOT 에서 일어나므로 거기서 검증이 안 걸리면 사실상 어디서도 안 걸린다.
+
+그중 **개발 하네스 루트(`$H`)** 는 공통 정의(`README.md` 의 라우팅·공통 분류 등급·작성 가이드, `references/required-docs.md`)가 있는 곳이다. 아래 명령들은 이 블록으로 루트를 확정한 뒤 사용한다:
 
 ```bash
-H=$([ -f .claude/.harness ] && echo .claude || echo plugins/mongshell-dev)
+H=$([ -f .claude/.harness ] && echo .claude || echo plugins/mongshell-dev)    # 개발 하네스 루트
+ROOTS=$([ -f .claude/.harness ] && echo .claude || { [ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort; })   # 하네스 루트 전체 (줄 단위)
+HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' -); HR=${HR:-'^$'}   # 루트 경로 패턴 — 루트가 없으면 어떤 경로와도 안 맞는다
 ```
 
 ## 역할
@@ -32,7 +36,7 @@ H=$([ -f .claude/.harness ] && echo .claude || echo plugins/mongshell-dev)
 
 **필수 read 문서** (harness-reviewer 가 호출되면 매번 의식. 루트 `CLAUDE.md` 는 자동 로드 — main-orchestration-violation 키 적용 시 자동 로드 본문 참조):
 
-- 하네스 파일 풀(`$H/agents/**`, `$H/skills/*/SKILL.md`, `$H/README.md`·`$H/references/required-docs.md`) — 인덱스로 대조 후보를 좁혀 컨텍스트를 구성 (상세: 워크플로우 Step 3).
+- 하네스 파일 풀(하네스 루트마다 `agents/**`·`skills/*/SKILL.md`·`README.md`, 그리고 `$H/references/required-docs.md`) — 인덱스로 대조 후보를 좁혀 컨텍스트를 구성 (상세: 워크플로우 Step 3).
 - Decision 파일 — `adr-content-mismatch` 검증 시 조건부 read (워크플로우 Step 4 참조).
 
 > frontmatter 스키마 권위: agent(name/description)·skill(name/description) 스키마는 Claude Code harness 자체 정의 (외부) — 본 프로젝트 내부 정의 없음. 권위 문서(role/kind/non_goals) 스키마 정의의 SSOT 는 하네스 `references/required-docs.md` 의 "Frontmatter 스키마" 섹션이며, 검증은 도메인별 분담(하네스 루트 밖의 `docs/` 등 = doc-reviewer, 하네스 권위 문서 = harness-reviewer 의 `frontmatter-schema-violation` 키).
@@ -44,43 +48,46 @@ H=$([ -f .claude/.harness ] && echo .claude || echo plugins/mongshell-dev)
 caller 가 프롬프트로 변경 범위(RANGE)나 파일 목록을 전달하면 그것만 사용한다. RANGE 미전달(직접 호출) 시에만 working-tree diff 로 수집한다:
 
 ```bash
-git status -s -- "$H/*.md" "$H/**/*.md"
-git diff --name-only -- "$H/*.md" "$H/**/*.md"              # working tree
-git diff --name-only --cached -- "$H/*.md" "$H/**/*.md"     # staged
+# working tree + staged + untracked 중 하네스 루트 아래 .md
+{ git diff --name-only -- '*.md'; git diff --name-only --cached -- '*.md'; git ls-files -o --exclude-standard -- '*.md'; } | sort -u | grep -E "$HR"
 ```
 
-RANGE 가 전달된 경우 변경 내용 자체는 다음으로 수집한다:
+RANGE 가 전달된 경우 대상 파일과 변경 내용은 다음으로 수집한다 (목록이 비면 검증할 것이 없으므로 종료):
 
 ```bash
 # $RANGE = caller 전달값 (예: <SHA>..HEAD / main...HEAD / --cached)
-git diff $RANGE -- "$H/*.md" "$H/**/*.md"
+git diff $RANGE --name-only -- '*.md' | grep -E "$HR"   # 대상 파일
+git diff $RANGE -- <대상 파일>                           # 변경 내용
 ```
 
 위반 보고는 이렇게 확정한 변경분 또는 현재 파일 내용에서만 인용한다.
 
 ### Step 2. 분류
 
-변경 파일을 다음 네 범주로 분류한다:
-- **agent** — `$H/agents/*.md`
-- **skill** — `$H/skills/*/SKILL.md`
-- **README** — `$H/README.md`
-- **기타** — `$H/references/required-docs.md`, 그 외 `$H/**/*.md`
+변경 파일을 다음 네 범주로 분류한다 (`<루트>` = 그 파일이 속한 하네스 루트):
+- **agent** — `<루트>/agents/*.md`
+- **skill** — `<루트>/skills/*/SKILL.md`
+- **README** — `<루트>/README.md`
+- **기타** — `$H/references/required-docs.md`, 그 외 `<루트>/**/*.md`
+
+개발 하네스(`$H`) 밖 플러그인의 `README.md` 는 그 플러그인의 구성 설명일 뿐, 라우팅·공통 분류 등급 같은 공통 정의의 권위는 계속 `$H/README.md` 다.
 
 ### Step 3. 컨텍스트 구축 (하네스 파일 풀)
 
 하네스 파일 풀 전체의 name/description 을 인덱스로 훑어 대조 후보를 좁힌다:
 
 ```bash
-ls "$H/agents/"
-ls "$H/skills/"
-fd ".*\.md" "$H/agents/" "$H/skills/" -x head -n 10   # frontmatter 스캔
+echo "$ROOTS" | while read -r r; do ls "$r/agents/" "$r/skills/" 2>/dev/null; done
+echo "$ROOTS" | while read -r r; do fd ".*\.md" "$r/agents/" "$r/skills/" -x head -n 10 2>/dev/null; done   # frontmatter 스캔
 ```
+
+플러그인이 달라도 같은 세션에 함께 설치되므로 skill 트리거·책임 겹침은 루트를 가로질러 본다.
 
 - 변경된 하네스 파일은 본문을 읽는다.
 - 비변경 하네스 파일 중 본문 대조가 필요한 후보:
   - **description 도메인 겹침** — 변경 파일과 description 키워드가 인접하거나 책임 범위가 겹치는 후보. skill-rnr-overlap / agent-rnr-overlap 경계가 모호한 쌍이 대상이며, **보수적(recall 우선)** 으로 판단이 애매하면 포함한다.
   - **Decision 인용 발견** — 변경 파일이 `Decision N`(legacy 순번) 또는 `Decision #N`(이슈번호) 을 인용한 경우 해당 decisions 파일 read (adr-content-mismatch 절차).
-  - **dispatch-mismatch 후보** — 변경 파일이 skill 이고 "agent X 에 위임" 이라 적었으면 그 agent 파일을 읽는다. 변경 파일이 agent 이면 `git grep -l '<agent-name>' "$H/skills/"` 로 호출 출처 skill 을 확정한 뒤 읽는다.
+  - **dispatch-mismatch 후보** — 변경 파일이 skill 이고 "agent X 에 위임" 이라 적었으면 그 agent 파일을 읽는다. 변경 파일이 agent 이면 `echo "$ROOTS" | while read -r r; do git grep -l '<agent-name>' -- "$r/skills/"; done` 로 호출 출처 skill 을 확정한 뒤 읽는다.
 
 판단:
 - 컨텍스트 섹션의 필수 read 문서를 모두 적재.
