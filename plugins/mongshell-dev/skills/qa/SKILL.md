@@ -79,10 +79,12 @@ rm -rf "$QA_TMP" && mkdir -p "$QA_TMP"
 QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 git diff $RANGE --name-only --diff-filter=d -- '*.md' > "$QA_TMP/md-changed.txt" 2>/dev/null || true
 # 하네스 루트 — vendored 소비 프로젝트는 .claude/ (.claude/.harness = sync 가 생성하는 vendored 마커),
-# 하네스 SSOT 저장소는 plugins/mongshell-dev/. 플러그인 소비 프로젝트는 둘 다 부재 → harness 도메인 공집합이 정상.
-H=$([ -f .claude/.harness ] && echo .claude || echo plugins/mongshell-dev)
-grep -v "^$H/" "$QA_TMP/md-changed.txt" > "$QA_TMP/doc-domain.txt" 2>/dev/null || true    # doc-reviewer 도메인
-grep "^$H/" "$QA_TMP/md-changed.txt" > "$QA_TMP/harness-domain.txt" 2>/dev/null || true  # harness-reviewer 도메인
+# 하네스 SSOT 저장소는 .claude-plugin/plugin.json 을 가진 plugins/<이름>/ 전부. 플러그인 소비 프로젝트는 없음 → harness 도메인 공집합이 정상.
+# 정의의 권위는 하네스 README "Reviewer 라우팅" — 이 블록은 harness-reviewer 와 같은 판정이다.
+ROOTS=$([ -f .claude/.harness ] && echo .claude || { [ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort; })
+HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' -); HR=${HR:-'^$'}   # 루트가 없으면 어떤 경로와도 안 맞는다
+grep -Ev "$HR" "$QA_TMP/md-changed.txt" > "$QA_TMP/doc-domain.txt" 2>/dev/null || true    # doc-reviewer 도메인
+grep -E "$HR" "$QA_TMP/md-changed.txt" > "$QA_TMP/harness-domain.txt" 2>/dev/null || true  # harness-reviewer 도메인
 ```
 
 - **코드 파일 변경 여부**: `git diff $RANGE --name-only | grep -v '\.md$'` 로 `.md` 외 변경 확인. toolchain 외 파일 (이미지/lock/data 등) false positive 는 도메인 외 입력 정책 (`${CLAUDE_PLUGIN_ROOT}/README.md` "Reviewer 라우팅") 으로 흡수.
@@ -276,7 +278,7 @@ Agent 도구로 `subagent_type=security-reviewer` 를 호출한다. 프롬프트
 
 reviewer 는 bash 검증 결과와 무관하게 보안 리뷰만 수행한다. bash 결과는 Step 4 종합에서 합산한다. OWASP 점검 컨텍스트(`docs/architecture.md` Auth 섹션 등)는 security-reviewer 가 조건부 read 한다. 출력의 공통 분류 등급 레이블을 그대로 활용한다. code-reviewer 와 병렬 호출한다.
 
-**doc-reviewer Agent 호출 (doc-reviewer 도메인 — 하네스 루트(`$H`) 밖 `.md` — 매칭 시):**
+**doc-reviewer Agent 호출 (doc-reviewer 도메인 — 하네스 루트 밖 `.md` — 매칭 시):**
 
 Agent 도구로 `subagent_type=doc-reviewer` 를 호출한다. 프롬프트에 다음을 포함:
 - `"변경 범위: $RANGE. 호출 출처: /qa 스킬에서 doc-reviewer 도메인 매칭 시 자동 호출."`
@@ -284,7 +286,7 @@ Agent 도구로 `subagent_type=doc-reviewer` 를 호출한다. 프롬프트에 �
 
 도메인 컨텍스트는 doc-reviewer 가 자체 구성한다 (적재 방식은 doc-reviewer 권위). 출력의 공통 분류 등급 레이블을 그대로 활용한다.
 
-**harness-reviewer Agent 호출 (harness-reviewer 도메인 — 하네스 루트(`$H`) 아래 `.md` — 매칭 시):**
+**harness-reviewer Agent 호출 (harness-reviewer 도메인 — 하네스 루트 아래 `.md` — 매칭 시):**
 
 Agent 도구로 `subagent_type=harness-reviewer` 를 호출한다. 프롬프트에 다음을 포함:
 - `"변경 범위: $RANGE. 호출 출처: /qa 스킬에서 harness-reviewer 도메인 매칭 시 자동 호출."`
@@ -495,7 +497,7 @@ git diff "${LAST_QA_SHA}..HEAD" --name-only --diff-filter=d > "$QA_TMP/reverify-
 
 **2. 도메인 매칭**
 
-수정 diff 파일 목록을 Step 1 과 동일한 split(`$H` 유도 포함)으로 재분류해 하네스 README "Reviewer 라우팅" 표로 매칭한다 — 닿은 도메인의 reviewer 만 재실행하고, 닿지 않은 도메인의 직전 라운드 결과는 그대로 승계한다. `security-reviewer` 는 실질 delta(새 로직·새 파일·의미 변경) + (`--branch`/`--security`) 조건 충족 시에만 재실행.
+수정 diff 파일 목록을 Step 1 과 동일한 split(하네스 루트 유도 포함)으로 재분류해 하네스 README "Reviewer 라우팅" 표로 매칭한다 — 닿은 도메인의 reviewer 만 재실행하고, 닿지 않은 도메인의 직전 라운드 결과는 그대로 승계한다. `security-reviewer` 는 실질 delta(새 로직·새 파일·의미 변경) + (`--branch`/`--security`) 조건 충족 시에만 재실행.
 
 **3. reviewer 프롬프트 제한**
 
