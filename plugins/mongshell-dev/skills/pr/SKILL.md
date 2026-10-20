@@ -89,6 +89,8 @@ PR 생성 전, 사용자가 로컬에서 브랜치를 띄워 변경을 눈으로
 SKETCH=$(git log @{u}..HEAD --pretty=format:"%s%n%b" 2>/dev/null)
 [ -z "$SKETCH" ] && SKETCH=$(git log -5 --pretty=format:"%s%n%b")
 # fallback: 최근 5개 (다른 브랜치 커밋 포함 가능)
+# QA 발견 요약 + 위험 경로: /qa --branch 가 marker 에 남긴 내용 (Step 0 게이트와 같은 경로). 부재 시 빈 문자열.
+QA_SUMMARY=$(cat "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)" 2>/dev/null)
 ```
 
 ```markdown
@@ -99,10 +101,22 @@ SKETCH=$(git log @{u}..HEAD --pretty=format:"%s%n%b" 2>/dev/null)
 ## Test plan
 - [ ] <변경 영역 기반 빈 체크리스트>
 
+## Risk
+<Low / Medium / High> — <한 줄 이유. $QA_SUMMARY 의 "위험 경로" 가 "없음" 이 아니면 High 로 제안하고 그 경로를 적는다.
+High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). 등급 기준은 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 항목>
+
+## How to revert
+<squash 커밋 revert 로 끝나는가, 아니면 마이그레이션·데이터 되돌림이 따로 필요한가 — 한두 줄>
+
+## QA 발견 요약
+<$QA_SUMMARY 그대로 — 발견 N건 (P0 0 · P1 b · P2 c · Pre-existing d) + 미해결 P1 사유 + Pre-existing>
+
 Closes #N
 ```
 
-QA marker 부재 상태에서 사용자가 'skip' 으로 진행한 경우, body 초안 하단에 다음 라인을 자동 포함한다:
+Risk / How to revert 는 PR 템플릿(`.github/pull_request_template.md`)이 있으면 그 제목을 그대로 쓴다. 리뷰 발견은 PR 전 `/qa` 에서만 돌므로, 이 두 절과 QA 발견 요약이 "어느 층이 무엇을 봤고 무엇을 남겼는가" 를 PR 에 남기는 유일한 기록이다.
+
+QA marker 부재 상태에서 사용자가 'skip' 으로 진행한 경우, "QA 발견 요약" 절 본문 대신 다음 라인을 자동 포함한다:
 
 ```
 > ⚠️ QA marker 없음 — 사용자 skip 으로 진행 (qa 미통과 상태에서 PR 생성)
@@ -151,5 +165,5 @@ gh pr view --json url,number,title,state --jq '{url, number, title, state}'
 ## 제약
 
 - 메인 세션이 절차를 오케스트레이션한다. 코드 / 문서 편집 X — git/gh 명령만 (브랜치 push / PR 생성 / view).
-- PR body 의 Summary / Test plan 본문은 사용자가 자유 작성. 자동 생성은 sketch 제안만.
+- PR body 의 Summary / Test plan / Risk / How to revert 본문은 사용자가 자유 작성. 자동 생성은 sketch 제안만 — Risk 등급 제안과 QA 발견 요약은 `/qa --branch` 가 남긴 marker 내용에서만 가져오고, `/pr` 이 diff 를 따로 계산하지 않는다 (아래 로컬 base 비교 금지).
 - **로컬 base 비교 금지**: PR 의 변경분 계산·충돌 표시는 GitHub(origin/main merge-base 기준) 책임. `/pr` 은 로컬 base diff(`main..HEAD` 등)를 계산하지 않는다 — 로컬 main ref 는 워크트리와 독립적으로 움직여 신뢰 불가하며, 로컬 비교는 격리를 침범한다.

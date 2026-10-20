@@ -339,6 +339,8 @@ Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경�
 
 toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는 stop 하지 않는다 — P0 분류 후 리포트에 포함한다.
 
+`code-reviewer` 의 `### Pre-existing` 절은 등급 합산에 넣지 않고 리포트의 `### Pre-existing` 절로 그대로 옮긴다 (README "공통 분류 등급" — 귀속 표시, 머지 게이트 비포함).
+
 ### Step 5: 통합 리포트 출력
 
 ```markdown
@@ -370,6 +372,9 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - [ ] [gemini] `src/foo/bar.ts:90` — 변수명 명확도 개선 (외부 LLM 의견)
 - [ ] [deepseek] `src/foo/baz.ts:14` — 조기 반환으로 중첩 감소 가능 (외부 LLM 의견)
 
+### Pre-existing (이 변경이 만들지 않음 — 머지 게이트 비포함)
+- [ ] [code-reviewer] `src/foo/old.ts:5` — 변경 전부터 있던 결함 (이슈화 후보)
+
 ---
 
 ### 검증 결과 요약
@@ -395,9 +400,22 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 리포트 출력 후, `--branch` 로 실행되어 **P0 == 0** 으로 종료된 경우에만 다음을 실행한다.
 
 ```bash
-# marker 는 의도적으로 $QA_TMP 밖 고정 경로 — /pr Step 0 이 세션 무관하게 읽는 계약. 변경 금지.
-touch "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)"
+# marker 는 의도적으로 $QA_TMP 밖 고정 경로 — /pr Step 0 이 세션 무관하게 읽는 계약(존재 = 통과). 경로 변경 금지.
+# 내용은 발견 요약 — /pr Step 2 가 PR 본문 "QA 발견 요약" 절에 그대로 붙인다. 리포트에서 개수·미해결 P1·Pre-existing 만 옮긴다.
+MARKER="/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)"
+# 위험 경로: 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 항목(마이그레이션·요청 경로·CI 워크플로)에 닿는 변경 파일.
+# /pr 은 로컬 base 비교를 하지 않으므로(그 스킬의 제약) RANGE 를 이미 가진 여기서 계산해 marker 에 남긴다.
+# 아래 패턴은 Drizzle + Next.js 프로젝트의 예 — <migration-dir> 권위는 DB 영역 CLAUDE.md.
+RISKY=$(git diff --name-only $RANGE | grep -E '^(\.github/|drizzle/|src/proxy\.ts$|src/middleware\.ts$)' | tr '\n' ' ')
+cat > "$MARKER" <<'EOF'
+발견 N건 (P0 0 · P1 b · P2 c · Pre-existing d) — /qa --branch YYYY-MM-DD
+- 미해결 P1: file:line — 한 줄 사유 (없으면 "없음")
+- Pre-existing: file:line — 한 줄 (없으면 "없음")
+- 위험 경로: <$RISKY 값 — 비어 있으면 "없음">
+EOF
 ```
+
+(위 heredoc 은 템플릿 — 실제 값으로 채워 기록한다. 발견 0건이면 첫 줄은 "발견 0건 — 고칠 것 없음". 위험 경로가 있으면 /pr 이 Risk 를 High 로 제안한다.)
 
 한 줄 안내(사용자 출력): "QA 통과 marker 기록 — /pr Step 0 게이트에서 확인됨"
 
