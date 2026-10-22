@@ -58,7 +58,7 @@ origin/main 읽기 전용 태깅의 단일 진입점. git tag + GitHub Release +
       gh pr view <N> --json headRefName --jq '.headRefName'
       ```
     - `^cycle/` 브랜치가 하나라도 있으면 → **MAJOR (Y) bump** 제안. 예: 2.4.0 → 2.5.0
-    - 전부 `^(feat|fix|chore|refactor)/issue-` 이면 → **MINOR (Z) bump** 제안. 예: 2.4.0 → 2.4.1
+    - 전부 `^(feat|fix|chore|refactor|docs|ci)/issue-` 이면 → **MINOR (Z) bump** 제안. 예: 2.4.0 → 2.4.1
     - PR 번호가 하나도 추출되지 않거나 `gh pr view` 조회 실패 → 추론하지 않고 사용자에게 버전을 질문 (폴백).
     - **PROJECT (X) bump 은 자동 제안하지 않는다** (사용자가 명시할 때만).
   - 제안 형식: `vX.Y.Z 제안 — <이유>. 다른 버전이면 알려주세요.` 사용자가 응답한 버전이 추론보다 우선한다.

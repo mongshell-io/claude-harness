@@ -19,7 +19,9 @@ GitHub PR 생성의 단일 진입점. 브랜치명(1순위) 또는 커밋 메시
 ## 브랜치 규약 (본 스킬이 단일 권위)
 
 - **git 브랜치명 = worktree 통일 키**. 키는 **첫 push 전에** 최종 이름으로 확정하고, **push 후 리네임 금지** (preview 인프라 리소스 고아화 — 스택별 상세: `${CLAUDE_PLUGIN_ROOT}/references/infra-gotchas.md`). 한 worktree = 한 브랜치.
-- 단발 이슈: `(feat|fix|chore|refactor)/issue-N-<slug>`. 연관 이슈 동시 처리 시 `-N-M-` 형태 허용.
+- 단발 이슈: `(feat|fix|chore|refactor|docs|ci)/issue-N-<slug>`. 연관 이슈 동시 처리 시 `-N-M-` 형태 허용.
+  - **`docs/`** = 문서(`*.md`·`docs/**`)만 바꾸는 작업, **`ci/`** = CI·워크플로(`.github/**`)만 바꾸는 작업. 코드가 한 줄이라도 섞이면 `chore/`·`fix/` 등을 쓴다.
+    소비 프로젝트는 이 두 접두의 preview 배포를 끌 수 있다(Vercel `git.deploymentEnabled` — 프로젝트 `docs/development.md` 가 권위). 이름이 곧 배포 여부라 섞인 변경에 쓰면 preview 없이 머지된다.
 - 마일스톤 사이클 (`/plan` 단위): `cycle/<slug>` — 버전 숫자를 브랜치명에 박지 않는다 (버전 SSOT = git tag max, `/release` 시점 계산). type-free prefix.
 - `<slug>` 는 kebab-case (소문자 + 하이픈).
 
