@@ -6,6 +6,8 @@
                                                      OpenClaw 의 새 답글이 다 쓰여질 때까지 기다려 출력
   openclaw-slack read TS|URL [--limit N]             스레드 전체 출력
   openclaw-slack recent [--limit N]                  채널 최근 글(스레드 시작점) 목록
+  openclaw-slack files TS|URL --out DIR [--since TS] [--list] [--force]
+                                                     스레드 첨부 파일을 DIR 에 받기 (OpenClaw·운영자 글만)
 
 TS 자리에는 Slack 메시지 링크(https://<워크스페이스>.slack.com/archives/<채널>/p…)도 받는다.
 
@@ -35,6 +37,7 @@ import ssl
 import subprocess
 import sys
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -47,6 +50,8 @@ KEYCHAIN_SERVICE = "slack-onuheim-claude-bot"
 SECURITY_BIN = "/usr/bin/security"
 KST = datetime.timezone(datetime.timedelta(hours=9))
 TS_RE = re.compile(r"\d+\.\d+")
+
+MAX_FILE_BYTES = 100 * 1024 * 1024
 
 EXIT_TIMEOUT, EXIT_API, EXIT_CONFIG, EXIT_USAGE = 2, 3, 4, 64
 SELF = os.path.realpath(__file__)
@@ -153,6 +158,42 @@ class Slack:
             raise SlackError(f"{method}: {body.get('error')}")
         return body
 
+    def download(self, url, dest, expected_size):
+        """Slack 이 호스팅한 첨부 파일을 dest 에 받는다. 토큰은 files.slack.com 에만 보낸다."""
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme != "https" or parsed.hostname != "files.slack.com":
+            raise SlackError(f"첨부 주소가 files.slack.com 이 아닙니다: {parsed.hostname}")
+        req = urllib.request.Request(url)
+        req.add_unredirected_header("Authorization", f"Bearer {self._token}")
+        try:
+            with self._opener.open(req, timeout=120) as resp:
+                # 권한(files:read)이 없으면 Slack 이 로그인 HTML 을 200 으로 돌려준다 — 파일로 저장하지 않는다.
+                if (resp.headers.get_content_type() or "") == "text/html":
+                    raise SlackError("첨부 대신 HTML 이 왔습니다 — 봇에 files:read scope 가 있는지 확인하세요")
+                data = resp.read(MAX_FILE_BYTES + 1)
+                served = resp.headers.get("Content-Length")
+        except urllib.error.HTTPError as e:
+            if e.code in (301, 302, 303, 307, 308):
+                # 권한이 없으면 files.slack.com 이 워크스페이스 로그인 페이지로 돌려보낸다.
+                raise SlackError("첨부 받기: 로그인 페이지로 리다이렉트됐습니다 — 봇 토큰에 files:read scope 가 "
+                                 "없습니다(추가 후 앱 재설치·키체인 토큰 확인)") from None
+            raise SlackError(f"첨부 받기: HTTP {e.code}") from None
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
+            raise SlackError(f"첨부 받기: 네트워크 오류 {getattr(e, 'reason', e)}") from None
+        if len(data) > MAX_FILE_BYTES:
+            raise SlackError(f"첨부가 {MAX_FILE_BYTES} 바이트를 넘습니다")
+        # 잘린 전송은 응답의 Content-Length 로 거른다. 파일 정보의 size 와는 다를 수 있다 — Slack 은 텍스트 첨부를
+        # 내려줄 때 UTF-8 BOM 을 떼어 3바이트 작게 준다(실측: BOM 있는 CSV 65,961 → 65,958). 그 차이는 경고로만 알린다.
+        if served is not None and served.isdigit() and len(data) != int(served):
+            raise SlackError(f"받은 크기 {len(data)} 가 응답 길이 {served} 와 다릅니다 — 전송이 잘렸습니다")
+        fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        note = None
+        if expected_size is not None and len(data) != expected_size:
+            note = f"Slack 이 알린 크기 {expected_size} 와 다릅니다(텍스트 파일이면 BOM 이 빠진 것일 수 있다)"
+        return len(data), note
+
     def thread(self, ts):
         messages, cursor = [], None
         while True:
@@ -220,6 +261,20 @@ def render(msg, me):
     print(f"=== [{author(msg, me)}] {stamp(msg['ts'])} KST ts={msg['ts']}{tag}")
     for line in body_text(msg).split("\n"):
         print(f"│ {line}")
+    for f in msg.get("files") or []:
+        print(f"📎 {file_label(f)} — files 명령으로 받는다")
+
+
+def file_label(f):
+    name = safe_name(f.get("name") or f.get("title") or f.get("id") or "file")
+    return f"{name} ({f.get('size', '?')} B, id={f.get('id', '?')})"
+
+
+def safe_name(name):
+    """첨부 이름을 디렉토리 밖으로 나갈 수 없는 파일 이름 하나로 만든다. 한글은 NFC 로 맞춘다."""
+    name = unicodedata.normalize("NFC", clean(name)).replace("\n", " ")
+    name = os.path.basename(name.replace("\\", "/")).strip().lstrip(".")
+    return name or "file"
 
 
 # ---- 인자 ----------------------------------------------------------------
@@ -343,6 +398,49 @@ def cmd_recent(slack, me, args):
               f"[{author(m, me)}] │ {first}")
 
 
+def cmd_files(slack, me, args):
+    """스레드 첨부를 --out 에 받는다. 받는 것은 OpenClaw·운영자 글의 첨부뿐이다 — 제3자 첨부는 목록에만 적는다."""
+    since = float(args.since) if args.since else 0.0
+    picked, skipped = [], []
+    for m in slack.thread(args.ts):
+        if float(m["ts"]) <= since:
+            continue
+        who = author(m, me)
+        for f in m.get("files") or []:
+            if who not in ("OpenClaw", "운영자(본인)"):
+                skipped.append((f, f"{who} 의 첨부"))
+            elif f.get("is_external") or not f.get("url_private_download"):
+                skipped.append((f, "Slack 이 호스팅하지 않는 첨부"))
+            elif f.get("mode") == "tombstone":
+                skipped.append((f, "삭제된 첨부"))
+            else:
+                picked.append((m, who, f))
+    for f, why in skipped:
+        print(f"skip {file_label(f)} — {why}")
+    if not picked:
+        print("받을 첨부가 없습니다.")
+        return
+    if not args.list:
+        os.makedirs(args.out, mode=0o700, exist_ok=True)
+    seen = set()
+    for m, who, f in picked:
+        name = safe_name(f.get("name") or f.get("title") or f["id"])
+        if name in seen:  # 같은 이름이 여러 번 올라오면 파일 ID 로 구분한다
+            stem, ext = os.path.splitext(name)
+            name = f"{stem}.{f['id']}{ext}"
+        seen.add(name)
+        dest = os.path.join(args.out, name)
+        if args.list:
+            print(f"file={dest} size={f.get('size', '?')} from={who} ts={m['ts']} id={f['id']}")
+            continue
+        if os.path.exists(dest) and not args.force:
+            die(f"이미 있습니다(--force 로 덮어쓰기): {dest}", EXIT_USAGE)
+        size, note = slack.download(f["url_private_download"], dest, f.get("size"))
+        print(f"file={dest} size={size} from={who} ts={m['ts']} id={f['id']}")
+        if note:
+            print(f"warn {name} — {note}")
+
+
 # ---- 진입점 ----------------------------------------------------------------
 
 def _positive(minimum):
@@ -371,6 +469,12 @@ def parse_args():
     r.add_argument("--limit", type=_positive(1))
     c = sub.add_parser("recent")
     c.add_argument("--limit", type=_positive(1), default=10)
+    f = sub.add_parser("files")
+    f.add_argument("ts")
+    f.add_argument("--out", required=True)
+    f.add_argument("--since")
+    f.add_argument("--list", action="store_true")
+    f.add_argument("--force", action="store_true")
     try:
         args = p.parse_args()
     except SystemExit as e:
@@ -390,7 +494,8 @@ def main():
     slack = Slack(load_token())
     try:
         me = slack.call("auth.test")["user_id"]
-        {"ask": cmd_ask, "wait": cmd_wait, "read": cmd_read, "recent": cmd_recent}[args.cmd](slack, me, args)
+        commands = {"ask": cmd_ask, "wait": cmd_wait, "read": cmd_read, "recent": cmd_recent, "files": cmd_files}
+        commands[args.cmd](slack, me, args)
     except SlackError as e:
         hint = ""
         if "not_in_channel" in str(e):
