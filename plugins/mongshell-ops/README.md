@@ -5,7 +5,7 @@ Mongshell 운영 도구 플러그인. 개발 하네스(`mongshell-dev`)와 달�
 | 구성 | 역할 |
 |---|---|
 | `skills/openclaw/SKILL.md` | OpenClaw 에게 요청 → 답 대기 → 판정 흐름과 승인 정책 |
-| `scripts/openclaw-slack` | Slack Web API 호출 (`ask` / `wait` / `read` / `recent`). Python 3 표준 라이브러리만 쓴다 |
+| `scripts/openclaw-slack` | Slack Web API 호출 (`ask` / `wait` / `read` / `recent` / `files`). Python 3 표준 라이브러리만 쓴다 |
 
 ## 구조
 
@@ -75,17 +75,19 @@ OpenClaw 는 기본으로 다른 봇의 글을 무시한다. 이 채널에만 �
 | `wait` 시간 초과 + "👀 반응도 없습니다" | OpenClaw 가 글을 못 받았다 → 위 "OpenClaw 쪽 전제" 설정과 게이트웨이 재시작 여부 확인 |
 | `wait` 시간 초과 + "👀" 있음 | 받았지만 아직 답을 쓰는 중 → 같은 `--since` 로 다시 `wait` |
 | `CERTIFICATE_VERIFY_FAILED` | python.org 설치본 python3 의 인증서 문제. 스크립트가 macOS 시스템 루트를 직접 싣지만(이때 Apple 의 루트별 부분 불신 정책은 적용되지 않는다), 그래도 나면 `/Applications/Python 3.x/Install Certificates.command` 를 실행 |
+| `files` 가 "로그인 페이지로 리다이렉트" | 토큰에 `files:read` 가 없다 → 앱 OAuth & Permissions 에 추가 → **Reinstall** → 토큰이 바뀌었으면 2번 다시 |
+| `files` 의 `warn … BOM` | Slack 은 텍스트 첨부를 내려줄 때 UTF-8 BOM 을 떼어 준다(원본보다 3바이트 작음). 내용은 같다 — 파서가 BOM 유무 둘 다 받아야 한다 |
 | 종료 코드 3 + "게시됐을 수 있으니" | 글 올리기 도중 연결이 끊겼다. 중복을 막으려고 재시도하지 않는다 → `recent` 로 올라갔는지 보고 다시 올린다 |
 
 ## Slack 앱 매니페스트 (재생성용)
 
-앱을 잃었을 때 api.slack.com/apps → Create New App → From a manifest 에 붙인다. 만든 뒤 Install → 토큰을 키체인에 넣고 → 채널에 초대한다. 앱 ID·봇 ID 가 바뀌므로 위 표와 OpenClaw 쪽 설정을 갱신한다. scope 는 공개 채널 기준 최소다(비공개 채널이면 `groups:history` 추가). 2026-10-20 에 만든 현재 앱은 이보다 넓은 scope(`channels:read`·`groups:*`)로 설치돼 있다. 토큰이 샜다고 의심되면 앱 화면 OAuth & Permissions 의 **Revoke All OAuth Tokens** 로 폐기하고 다시 설치해 새 토큰을 키체인에 넣는다.
+앱을 잃었을 때 api.slack.com/apps → Create New App → From a manifest 에 붙인다. 만든 뒤 Install → 토큰을 키체인에 넣고 → 채널에 초대한다. 앱 ID·봇 ID 가 바뀌므로 위 표와 OpenClaw 쪽 설정을 갱신한다. scope 는 공개 채널 기준 최소다(비공개 채널이면 `groups:history` 추가). `files:read` 는 `files` 명령(스레드 첨부 받기)용이다 — 2026-10-22 추가. 현재 앱은 이보다 넓은 scope(`channels:read`·`groups:*`)로 설치돼 있다. 토큰이 샜다고 의심되면 앱 화면 OAuth & Permissions 의 **Revoke All OAuth Tokens** 로 폐기하고 다시 설치해 새 토큰을 키체인에 넣는다.
 
 ```json
 {
   "display_information": { "name": "Mongshell-Claude", "description": "Claude Code 가 OpenClaw 에게 요청을 올리고 답을 읽는 손" },
   "features": { "bot_user": { "display_name": "Mongshell-Claude", "always_online": false } },
-  "oauth_config": { "scopes": { "bot": ["chat:write", "channels:history", "users:read"] } },
+  "oauth_config": { "scopes": { "bot": ["chat:write", "channels:history", "users:read", "files:read"] } },
   "settings": { "org_deploy_enabled": false, "socket_mode_enabled": false, "token_rotation_enabled": false }
 }
 ```
