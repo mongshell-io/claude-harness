@@ -14,7 +14,7 @@ GitHub PR 생성의 단일 진입점. 브랜치명(1순위) 또는 커밋 메시
 
 - 명시 호출: "/pr", "PR 만들자", "pull request"
 - ⚠️ 자동 호출 X — 사용자가 작업 완료 시점에 명시 호출.
-- `/qa --branch` 통과 marker 게이트를 Step 0 에서 기계 확인한다. 명시 skip 응답으로 우회 가능 (soft gate).
+- `/qa --branch` 통과 marker 게이트를 Step 0 에서 기계 확인한다. marker 가 없으면 묻지 않고 `/qa --branch` 를 먼저 돌린다. 사용자가 미리 skip 을 지시했을 때만 건너뛴다.
 
 ## 브랜치 규약 (본 스킬이 단일 권위)
 
@@ -31,20 +31,15 @@ GitHub PR 생성의 단일 진입점. 브랜치명(1순위) 또는 커밋 메시
 
 ### Step 0: 사전 확인
 
-각 조건 실패 시 stop (또는 soft gate) + 안내:
+각 조건 실패 시 stop (QA marker 는 자동 실행) + 안내:
 
-- **QA marker 게이트 (soft gate)**: `test -f "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)"` —
+- **QA marker 게이트 (없으면 자동 실행)**: `test -f "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)"` —
   - 파일 존재 → 조용히 통과.
-  - 파일 부재 → 다음 안내와 함께 응답 대기:
-    ```
-    현재 HEAD 에서 `/qa --branch` 통과 기록이 없습니다.
-    (qa 통과 후 추가 커밋이 있어도 무효화됩니다.)
-    `/qa --branch` 실행을 권장합니다. 그래도 진행하려면 'skip' 으로 답해 주세요.
-    ```
-    명시 'skip' 응답 시에만 계속 진행. 그 외 응답은 stop.
+  - 파일 부재 → **묻지 않고** `/qa --branch` 를 실행한다. 통과하면(P0 0) 이어서 진행, P0 가 남으면 stop + 보고.
+    사용자가 호출 시점에 "qa 건너뛰어/skip" 을 미리 말했을 때만 건너뛰고, 아래 "QA marker 없음" 라인을 본문에 넣는다.
   - 비고: `/tmp` 는 재부팅 시 휘발되어 파일이 사라진다. 이때 안전한 방향(재검증 권고)으로 폴백된다.
 - 현재 브랜치 = `main` → "feature 브랜치에서 호출해 주세요"
-- 브랜치명이 `^claude/` (auto-worktree 패턴) → "feature 브랜치명으로 rename 후 재호출 (예: `git branch -m chore/issue-N-<slug>`, 사이클이면 `cycle/<slug>`)". 리네임 → push 순서 강제 = 통일 키(git 브랜치명)를 push 전 확정해 preview 인프라 리소스 고아화 방지 (아래 "브랜치 규약" — 리네임 불변식).
+- 브랜치명이 `^claude/` (auto-worktree 패턴) → **묻지 않고** 아래 "브랜치 규약" 이름으로 `git branch -m` 한 뒤 진행한다 (예: `chore/issue-N-<slug>`, 사이클이면 `cycle/<slug>`). 이미 push 된 브랜치면 리네임하지 않고 stop + 안내. 리네임 → push 순서 강제 = 통일 키(git 브랜치명)를 push 전 확정해 preview 인프라 리소스 고아화 방지 (아래 "브랜치 규약" — 리네임 불변식).
 - `git status` 결과 dirty → status 출력 + "commit 먼저"
 - `gh auth status` 미인증 → "`gh auth login` 후 재호출"
 - `gh pr list --head <branch>` 결과 있음 → 기존 PR URL 안내
@@ -58,7 +53,7 @@ U=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)
 
 - `U` 가 비어있음 **또는** `${U#origin/}` != `B` (upstream 이 현재 브랜치 자신의 remote ref 가 아님 — 대표적으로 auto-worktree 가 `origin/main` 을 추적하는 경우) → **`git push -u origin "$B"`** (명시 refspec + upstream 재설정). 이 분기에서 plain `git push` 는 절대 쓰지 않는다.
   - auto-worktree 만의 문제가 아니다 — `git checkout -b <branch> origin/main` 처럼 원격 ref 에서 분기해 만든 브랜치도 upstream 이 그 ref(`origin/main`)로 잡힌다.
-- `${U#origin/}` == `B` (upstream 이 현재 브랜치 자신) → `git log @{u}.. --oneline` 으로 unpushed commits 출력 + "push 하고 진행할까요?" — y: `git push` / n: stop.
+- `${U#origin/}` == `B` (upstream 이 현재 브랜치 자신) → `git log @{u}.. --oneline` 으로 unpushed commits 출력 + 묻지 않고 `git push`.
 
 > **왜**: auto-worktree 브랜치(`claude/*` 등)는 생성 시 upstream 이 `origin/main` 으로 잡히는 경우가 있어, plain `git push` 가 main 에 직접 push 되는 위험이 있다. upstream 의 remote-basename 이 현재 브랜치명과 일치할 때만 plain push 가 안전하고, 그 외에는 항상 feature 브랜치 ref 로 명시 push 한다.
 
@@ -81,9 +76,9 @@ printf '%s\n' "$CLOSES_LOG" | grep -iE '^closes' | grep -oE '#[0-9]+' | head -1
 
 PR 생성 전, 사용자가 로컬에서 브랜치를 띄워 변경을 눈으로 확인하도록 **로컬 실행 진입점을 안내**한다. 명령어·포트·환경 셋업은 `docs/development.md` "로컬 실행" 섹션이 권위 — 스킬 본문에 명령어를 복제하지 않고(툴 중립 유지), 해당 섹션 경로를 사용자에게 안내한다. 로컬 검증은 사용자 책임이며 PR 진행을 막는 게이트가 아니다.
 
-### Step 2: title + body 초안 + 사용자 confirm
+### Step 2: title + body 작성 (확인 없이 진행)
 
-- **title**: `git log -1 --pretty=%s` 그대로. (multi-commit 도 동일 — 사용자가 confirm 단계에서 수정 가능.)
+- **title**: `git log -1 --pretty=%s` 그대로. (multi-commit 도 동일 — 고칠 점은 PR 생성 뒤 `gh pr edit` 로 반영.)
 - **body 초안**:
 
 ```bash
@@ -119,7 +114,7 @@ Closes #N
 
 Risk / How to revert 는 PR 템플릿(`.github/pull_request_template.md`)이 있으면 그 제목을 그대로 쓴다. 자동 리뷰어는 PR 생성 후에는 돌지 않으므로, 이 두 절과 QA 발견 요약이 "어느 층이 무엇을 봤고 무엇을 남겼는가" 를 PR 에 남기는 유일한 기록이다.
 
-QA marker 부재 상태에서 사용자가 'skip' 으로 진행한 경우, "QA 발견 요약" 절 본문 대신 다음 라인을 자동 포함한다:
+QA marker 부재 상태에서 사용자가 미리 skip 을 지시해 진행한 경우, "QA 발견 요약" 절 본문 대신 다음 라인을 자동 포함한다:
 
 ```
 > ⚠️ QA marker 없음 — 사용자 skip 으로 진행 (qa 미통과 상태에서 PR 생성)
@@ -131,7 +126,7 @@ QA marker 부재 상태에서 사용자가 'skip' 으로 진행한 경우, "QA �
 > ⚠️ QA marker 없음 — 위험 경로 미산출. 변경 파일(마이그레이션·요청 경로·CI 워크플로) 기준으로 직접 판정
 ```
 
-미리보기 출력 후 사용자가 자유 편집한 최종 본문을 받아 다음 단계로 진행한다.
+초안을 보여주고 기다리지 않는다 — 바로 Step 3 으로 가서 PR 을 만든다. 사용자가 고칠 점을 말하면 `gh pr edit` 로 반영한다.
 
 ### Step 3: gh pr create
 
@@ -139,7 +134,7 @@ QA marker 부재 상태에서 사용자가 'skip' 으로 진행한 경우, "QA �
 
 ```bash
 BODY=$(cat <<'EOF'
-<사용자 최종 본문>
+<Step 2 본문>
 EOF
 ) && gh pr create \
   --base main \
