@@ -91,7 +91,9 @@ claude-harness/
 │   ├── .claude-plugin/plugin.json
 │   ├── README.md                     #   흐름도·라우팅·공통 정의·본문 작성 가이드
 │   ├── agents/                       #   architect·developer·*-reviewer (6)
-│   ├── skills/                       #   create-issue·plan·pr·qa·release·review-comments
+│   ├── skills/                       #   create-issue·plan·pr·qa·release·review-comments (절차)
+│   │                                 #   verification-before-completion·systematic-debugging (규율)
+│   ├── LICENSE.superpowers           #   규율 스킬 출처(obra/superpowers) MIT 고지
 │   ├── references/                   #   required-docs(이식 계약)·infra-gotchas(인프라 함정)
 │   └── scripts/                      #   decisions 인덱스·버전 검증
 ├── plugins/mongshell-ops/            # 운영 도구 (플러그인 채널 전용)
