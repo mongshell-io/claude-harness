@@ -12,7 +12,7 @@ Mongshell 의 개인용 Claude Code 플러그인 저장소. 개발 하네스(mon
 ## 설치 (플러그인)
 
 ```
-/plugin marketplace add mongshellio/claude-harness
+/plugin marketplace add mongshell-io/claude-harness
 /plugin install mongshell-dev@mongshell
 ```
 
