@@ -45,7 +45,7 @@ OpenClaw 는 기본으로 다른 봇의 글을 무시한다. 이 채널에만 �
 1. 플러그인 설치 (`mongshell` 마켓플레이스를 이미 쓰는 PC 는 첫 줄 대신 `/plugin marketplace update mongshell`)
 
    ```
-   /plugin marketplace add mongshellio/claude-harness
+   /plugin marketplace add mongshell-io/claude-harness
    /plugin install mongshell-ops@mongshell
    ```
 
