@@ -73,6 +73,8 @@ flowchart LR
 ```
 
 > 도메인별 라우팅 권위는 아래 "Reviewer 라우팅" 표 — caller (`/qa` 등) 가 변경 파일을 입력 도메인으로 분기.
+>
+> 규율 스킬(`verification-before-completion` · `systematic-debugging`)은 흐름의 한 단계가 아니라 상황 트리거라 흐름도에 없다 — 아래 "호출 방식".
 
 ---
 
@@ -179,7 +181,10 @@ skill / agent 가 참조하는 프로젝트 권위 문서(`docs/**`, 영역별 `
 
 ## 호출 방식
 
-모든 스킬은 명시 호출 전용입니다 (자동 호출 스킬 없음).
+- **절차 스킬** (`/create-issue` · `/plan` · `/qa` · `/pr` · `/review-comments` · `/release`) — 명시 호출 전용. 개발 흐름에 영향을 주므로 우발적 실행을 막는다.
+- **규율 스킬** (`verification-before-completion` · `systematic-debugging`) — 상황이 트리거라 명시 호출 없이 적용한다. 각 SKILL.md 의 description 이 적용 조건을 말하고, 메인 세션과 developer 가 그 상황(완료 주장 직전 · 버그를 만났을 때)에서 스스로 따른다. 판단 기준과 순서를 더할 뿐 새 실행 흐름(위임 · commit · 외부 발신)을 열지 않으므로 우발적 실행의 위험이 없다 — 위임 여부는 여전히 루트 `CLAUDE.md` 오케스트레이터 규칙이 정한다.
+
+규율 스킬은 [obra/superpowers](https://github.com/obra/superpowers) (MIT) 에서 옮겨 왔다 — 라이선스 고지는 [LICENSE.superpowers](./LICENSE.superpowers).
 
 ## 본문 작성 가이드 — 진입 금지 도메인 키워드
 

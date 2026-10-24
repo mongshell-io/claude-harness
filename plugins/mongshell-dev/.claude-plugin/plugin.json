@@ -1,4 +1,4 @@
 {
 	"name": "mongshell-dev",
-	"description": "Mongshell 개발 하네스 — SDLC 스킬(create-issue/plan/qa/pr/review-comments/release) + 에이전트(architect/developer/code·doc·harness·security-reviewer) + 검증 스크립트. 프로젝트별 값은 소비 프로젝트의 docs/ 계약과 루트 CLAUDE.md 가 권위."
+	"description": "Mongshell 개발 하네스 — SDLC 스킬(create-issue/plan/qa/pr/review-comments/release) + 규율 스킬(verification-before-completion/systematic-debugging) + 에이전트(architect/developer/code·doc·harness·security-reviewer) + 검증 스크립트. 프로젝트별 값은 소비 프로젝트의 docs/ 계약과 루트 CLAUDE.md 가 권위."
 }
