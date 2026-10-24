@@ -2,13 +2,13 @@
 name: plan
 description: >-
   milestone 단위 multi-issue 사이클의 오케스트레이션 진입점.
-  의존성 그래프 + 라운드 계획을 인메모리로 산출하고 라운드 시작 confirm 후 developer → 변경 도메인의 reviewer(들) 자동 검토 루프 (P0 == 0 까지, 최대 3회 iteration) 로 진행.
+  의존성 그래프 + 라운드 계획을 인메모리로 산출하고 계획 confirm 1회 후 developer → 변경 도메인의 reviewer(들) 자동 검토 루프 (P0 == 0 까지, 최대 3회 iteration) 로 진행.
   트리거 — "/plan", "사이클 계획", "next version".
 ---
 
 # /plan
 
-milestone 단위 multi-issue 사이클의 오케스트레이션 진입점. `gh issue view` 로 대상 이슈를 수집하고 의존성 그래프 + 라운드 계획을 인메모리로 산출한다. 사용자 confirm 게이트를 거쳐 라운드별로 `developer` → 변경 도메인의 reviewer(들) 자동 검토 루프 (`P0 == 0` 도달까지, 최대 3회 iteration) 를 진행하고, 사이클 종료 후 `/qa --branch` 종합 검증을 안내한다.
+milestone 단위 multi-issue 사이클의 오케스트레이션 진입점. `gh issue view` 로 대상 이슈를 수집하고 의존성 그래프 + 라운드 계획을 인메모리로 산출한다. 계획 confirm 1회를 거친 뒤 라운드별로 `developer` → 변경 도메인의 reviewer(들) 자동 검토 루프 (`P0 == 0` 도달까지, 최대 3회 iteration) 를 진행하고, 사이클 종료 후 `/qa --branch` 종합 검증을 안내한다.
 
 ## 언제 호출하는가
 
@@ -93,8 +93,8 @@ gh issue list --milestone vX.Y.0 --state open --json number,title,body,labels
 
 - 각 라운드 안: developer + 변경 도메인의 reviewer(들) 자동 루프 (`P0 == 0` 까지, 최대 3회 iteration) — 도메인이 여럿이면 reviewer 들이 같은 응답에서 병렬 호출
 - 모든 라운드 완료 → `/qa --branch` 실행 (사이클 종합 검증)
-- 라운드 3회 소진 후 P0 잔여 → 사용자 확인 후 Round N+1 추가
-- P1 → 기본은 `/create-issue` 안내. P2 → qa 의 "P2 라운드 종결 규칙"(조건부 유예 원칙) 준용. 같은 라운드 추가 처리는 사용자 명시 시.
+- 라운드 3회 소진 후 P0 잔여 → 묻지 않고 Round N+1 추가 (Round N+1 도 3회 소진하면 그때 stop + 보고)
+- P1 → 같은 라운드에서 처리 (P0 와 같은 루프, 3회 상한 공유). P2 → qa 의 "P2 라운드 종결 규칙"(조건부 유예 원칙) 준용.
 
 ---
 
@@ -107,21 +107,17 @@ gh issue list --milestone vX.Y.0 --state open --json number,title,body,labels
 
 ### Step 4: 라운드 안 자동 검토 루프 (Iteration 1..N, 최대 3회)
 
-**사용자 "진행" 신호를 받은 후에만** 라운드 위임을 시작한다. **라운드 시작 confirm 이후 루프 종료 (`P0 == 0` 도달 또는 3회 소진) 와 라운드 종료 보고까지는 추가 사용자 confirm 없이 자동 진행**한다.
-
-라운드 시작 전 다음을 출력하고 사용자 confirm 을 받는다:
+**사용자 "진행" 신호(Step 3)를 받은 후에만** 라운드 위임을 시작한다. 그 뒤로는 **라운드 사이에 멈추지 않는다** — 라운드 시작·루프 종료·라운드 종료 보고·다음 라운드 착수까지 추가 confirm 없이 자동 진행한다. 라운드 시작 때는 다음 한 줄만 출력하고 바로 위임한다:
 
 ```markdown
-## Round N 시작
-
-위임 대상: #N (제목), #P (제목)
-
-이 라운드는 developer → 변경 도메인의 reviewer(들) 자동 검토 루프 (`P0 == 0` 까지, 최대 3회 iteration) 로 진행됩니다. 도메인이 여럿이면 reviewer 들이 같은 응답에서 병렬 호출됩니다. 계속할까요?
+## Round N 시작 — 위임 대상: #N (제목), #P (제목)
 ```
+
+멈추는 것은 사용자만 줄 수 있는 입력(제품 결정·자격증명·운영 DB 쓰기·기존 작업 폐기)이 필요할 때뿐이다.
 
 #### Step 4a: Iteration 1 — 구현
 
-사용자 confirm 후 `developer` 서브에이전트를 호출한다. 프롬프트에 다음을 포함한다:
+`developer` 서브에이전트를 호출한다. 프롬프트에 다음을 포함한다:
 
 - 대상 이슈 번호와 제목
 - `gh issue view <N>` 의 작업 항목 및 관련 파일
@@ -218,15 +214,15 @@ wait
 - [ ] [이슈 #N] [P0/P1 항목] (`file:line`)
 
 다음 단계:
-1. 잔여 P0 가 있으면 (루프 3회 소진 시) "Round N+1 진행" 으로 알려주세요.
-2. P1 과 Pre-existing(이 라운드가 만들지 않은 결함) 은 `/create-issue` 등록을 권장하고, P2 는 qa 의 "P2 라운드 종결 규칙"(조건부 유예)을 따릅니다. 같은 라운드 자동 처리를 원하면 "P1 도 돌려줘" 로 알려주세요.
+1. 잔여 P0 가 있으면 (루프 3회 소진 시) 자동으로 Round N+1 을 추가했습니다.
+2. Pre-existing(이 라운드가 만들지 않은 결함) 은 `/create-issue` 를 묻지 않고 호출해 등록했습니다. P2 는 qa 의 "P2 라운드 종결 규칙"(조건부 유예)을 따릅니다.
 3. 모든 라운드 완료 후 `/qa --branch` 로 사이클 종합 검증(build 포함)을 진행합니다 — `/qa` 의 책임 경계는 [qa/SKILL.md](../qa/SKILL.md) 의 "/plan 자동 iteration 과의 책임 경계" 섹션 참조.
 ```
 
 **가변 라운드 처리**:
 
-- 잔여 P0 (3회 소진 후) → 사용자 확인 후 Round N+1 추가. 동일한 자동 검토 루프 반복.
-- P1 → 기본은 `/create-issue` 안내. 사용자가 "P1 도 돌려달라" 명시하면 같은 루프로 P1 처리 (3회 상한 동일 — 상한 도달 시 Round N+1 이관 또는 /create-issue 선택지 제시). P2 → qa "P2 라운드 종결 규칙" 준용.
+- 잔여 P0·P1 (3회 소진 후) → 묻지 않고 Round N+1 추가. 동일한 자동 검토 루프 반복. Round N+1 도 3회 소진하면 stop + 보고(아키텍처 의심 신호).
+- P1 → 같은 루프에서 P0 와 함께 처리 (3회 상한 공유). P2 → qa "P2 라운드 종결 규칙" 준용.
 - 남은 라운드가 있으면 Step 4 로 복귀.
 
 ### Step N: 최종 리포트 (사이클 완료 → /release 안내)
@@ -255,10 +251,10 @@ wait
 
 ## 제약 / non_goals
 
-- **사이클 전체 자동 진행 X** — 라운드 시작 시점마다 사용자 confirm 필수. 단 라운드 안 자동 검토 루프 종료 (`P0 == 0` 또는 3회 소진) 와 라운드 종료 보고까지는 자동 진행 (라운드 시작 confirm 1회로 묶음).
-- **라운드당 최대 3회 iteration** — developer + 자동 리뷰가 한 iteration. 종료 조건은 `P0 == 0` (정상) 또는 3회 소진 (강제). 자동 루프는 **P0 해결만 시도**하고, P1 / P2 는 보고만 한다. P1 추가 처리가 필요하면 사용자가 "P1 도 돌려줘" 로 명시 (같은 라운드, 3회 상한 안). P0 가 3회 후에도 남으면 사용자가 "Round N+1 진행" 으로 새 라운드 추가.
+- **confirm 은 계획(Step 3) 1회뿐** — 그 뒤 라운드 시작·종료·다음 라운드 착수는 자동 진행한다. 멈추는 건 사용자만 줄 수 있는 입력이 필요할 때뿐.
+- **라운드당 최대 3회 iteration** — developer + 자동 리뷰가 한 iteration. 종료 조건은 `P0 == 0` (정상) 또는 3회 소진 (강제). 자동 루프는 **P0·P1 해결을 시도**하고, P2 는 qa 규칙대로 처리한다. 3회 후에도 남으면 자동으로 Round N+1 을 추가한다.
 - **`docs/` 파일 편집 X** — `/plan` 범위 외.
-- **새 GitHub Issue 생성 X** — `/create-issue` 권위. P1 spawn 도 `/create-issue` 호출을 안내하는 것으로 끝낸다 (P2 처리는 qa "P2 라운드 종결 규칙" 준용).
+- **새 GitHub Issue 생성 X** — `/create-issue` 권위. Pre-existing 은 `/create-issue` 를 묻지 않고 호출해 등록한다 (P2 처리는 qa "P2 라운드 종결 규칙" 준용).
 - **설계 결정 X** — architect 에이전트에 위임. `/plan` 은 architect 호출을 "권고"만 한다.
 - **코드 직접 편집 X** — `developer` 서브에이전트 위임만. 메인 세션 = 오케스트레이터 원칙 (CLAUDE.md).
 - **PR 생성 / 코멘트 처리 X** — `/pr` / `/review-comments` 권위.

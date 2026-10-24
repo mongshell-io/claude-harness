@@ -57,7 +57,7 @@ description: >-
 
 알 수 없는 인자가 들어오면 사용법을 안내하고 stop 한다.
 
-`git status` / `git diff HEAD` 로 uncommitted 변경 존재 여부를 확인한다. 변경이 전혀 없으면 "검증할 변경이 없습니다. 그래도 진행할까요?" 사용자 확인 후 결정한다.
+`git status` / `git diff HEAD` 로 uncommitted 변경 존재 여부를 확인한다. 변경이 전혀 없으면 "검증할 변경이 없습니다" 한 줄 알리고 종료한다(묻지 않는다).
 
 ### Step 1: 변경 파일 도메인 매칭
 

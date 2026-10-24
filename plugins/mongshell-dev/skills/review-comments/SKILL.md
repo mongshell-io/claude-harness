@@ -26,7 +26,7 @@ PR 리뷰 코멘트 처리의 단일 진입점. 코멘트 fetch → 분류 → �
 - `git status` 로 working tree dirty 여부 확인. dirty 면 `git status` 출력 + stop ("commit 먼저" 안내).
 - `B=$(git branch --show-current)` 기준으로 unpushed 를 확인한다 — upstream(`@{u}`)이 `origin/$B` 가 아닐 수 있으므로 `@{u}` 를 쓰지 않는다(upstream 불신 원칙은 `/pr` Step 0 과 동일하되, 이 스킬은 PR 존재가 전제라 `origin/$B` 부재를 첫 push 유도가 아닌 stop 으로 처리).
   - `git rev-parse --verify -q origin/"$B"` 실패 → PR 브랜치 전제 깨짐 → stop + 안내.
-  - 성공 → `git log origin/"$B".. --oneline` 으로 unpushed commits 확인. 있으면 warn + "의도한 건가요?" 사용자에게 진행 여부 묻기.
+  - 성공 → `git log origin/"$B".. --oneline` 으로 unpushed commits 확인. 있으면 묻지 않고 그 커밋까지 같이 push 하고 리포트에 적는다.
 
 ### Step 1: PR 식별
 
@@ -49,20 +49,19 @@ gh api repos/{owner}/{repo}/pulls/<N>/comments
 gh api repos/{owner}/{repo}/pulls/<N>/reviews --jq '[.[] | select(.body != null and .body != "")]'
 ```
 
-- 본인 작성 코멘트도 포함한다 — self-review history 기록용. 분류 대상에 포함. 본인 코멘트도 0개면 "처리할 코멘트가 없습니다. 종료할까요?" 사용자 확인.
+- 본인 작성 코멘트도 포함한다 — self-review history 기록용. 분류 대상에 포함. 본인 코멘트도 0개면 "처리할 코멘트가 없습니다" 한 줄 알리고 종료.
 - 외부 리뷰어 코멘트 없이 본인 코멘트만 있는 경우도 동일하게 처리한다.
 
-### Step 3: 분류 + 사용자 confirm
+### Step 3: 분류 (확인 없이 진행)
 
-코멘트 본문을 공통 분류 등급(하네스 README — P0/P1/P2 의미 정의) 기준으로 분류한다. 판단이 모호하면 사용자에게 분류를 직접 요청한다.
+코멘트 본문을 공통 분류 등급(하네스 README — P0/P1/P2 의미 정의) 기준으로 분류한다. 판단이 모호하면 높은 쪽 등급으로 둔다(사용자에게 묻지 않는다).
 
-미리보기를 P0 / P1 / P2 섹션별로 출력한 뒤 사용자 confirm 을 대기한다.
+분류를 P0 / P1 / P2 섹션별로 한 번 출력하고 **기다리지 않고** Step 4 로 간다.
 
-### Step 4: developer 위임 (P0 일괄)
+### Step 4: developer 위임 (P0·P1 일괄)
 
-- P0 전체를 한 번에 `developer` 서브에이전트에 위임한다 (PR 당 평균 1~2건이라 건별 분리 무의미).
+- P0·P1 전체를 한 번에 `developer` 서브에이전트에 위임한다 (PR 당 평균 1~2건이라 건별 분리 무의미).
 - 프롬프트에 포함: PR 번호 / 코멘트 본문 / "/review-comments 스킬에서 호출됨".
-- P1 는 사용자 요청 시에만 추가 위임한다 (기본 보류).
 - P2 는 처리하지 않는다 (리포트에만 기재).
 - developer 가 변경 범위에 대한 기본 검증을 수행한다 (typecheck / 테스트 — 구체 명령은 `docs/development.md` 참조). 전체 QA 검증이 필요하면 Step 6 이후 사용자가 `/qa` 를 별도 호출한다.
 
@@ -90,7 +89,7 @@ git push origin HEAD
 - PR: <URL>
 - 처리 결과:
   - P0: N건 처리
-  - P1: M건 (보류/처리)
+  - P1: M건 처리
   - P2: K건 (리포트 only)
 - commit: <SHA> "<message>"
 - 검증 (developer 결과):
@@ -108,11 +107,11 @@ git push origin HEAD
 |------|------|
 | gh auth 미인증 | stop + `gh auth login` 안내 |
 | working tree dirty | stop + `git status` 출력 |
-| unpushed commits | warn + 진행 여부 묻기 |
+| unpushed commits | 묻지 않고 그 커밋까지 같이 push (리포트에 명시) |
 | `origin/$B` 부재 | stop + 안내 (PR 브랜치 전제 깨짐) |
 | PR 자동 감지 실패 + 인자 없음 | `gh pr list --state open` 결과 + 사용자에게 번호 묻기 |
-| PR 코멘트 0개 | 사용자 확인 후 결정 |
-| 분류 판단 모호 | 사용자에게 분류 직접 요청 |
+| PR 코멘트 0개 | "처리할 코멘트 없음" 알리고 종료 |
+| 분류 판단 모호 | 높은 쪽 등급으로 분류하고 진행 |
 | developer P0 처리 실패 | stop + 출력 전달 |
 
 ## 컨벤션
