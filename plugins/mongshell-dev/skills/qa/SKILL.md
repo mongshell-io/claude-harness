@@ -50,8 +50,7 @@ description: >-
 - `--skip-code-review` — `code-reviewer` 호출 제외. `/plan` 사이클 종료 직후 호출 시 라운드 안 자동 리뷰와의 중복 회피용 (Step 1 호출 조건 표 참조). 예: `/qa --branch --skip-code-review`. doc-reviewer / harness-reviewer 는 그대로 실행.
 - `--build` — 단발 기본에서 build 검증 추가. `--branch` 시에는 기본 포함이라 불필요.
 - `--security` — 단발 기본에서 `security-reviewer` 추가. `--branch` 시에는 기본 포함이라 불필요.
-- `--gemini` — gemini CLI 리뷰 추가. `--branch` 와 무관하게 항상 `--gemini` 명시 필요.
-- `--deepseek` — DeepSeek API 리뷰 추가. `--branch` 와 무관하게 항상 `--deepseek` 명시 필요. `--gemini` 와 독립 — 둘 다 지정 시 둘 다 실행. `DEEPSEEK_API_KEY` 환경변수 필요 (`~/.zshrc` 등 머신 로컬에 `export`; git 미추적). DeepSeek 은 CLI 가 없어 `curl` + `jq` 로 OpenAI 호환 REST API 를 직접 호출한다.
+- `--gemini` / `--deepseek` — 외부 LLM 리뷰 추가. 서로 독립이고 `--branch` 에 자동 포함되지 않는다. **지정됐을 때만** `${CLAUDE_PLUGIN_ROOT}/references/external-llm-review.md` 를 읽고 그 절차(사전 점검 · 실행 · 결과 분류)를 따른다.
 
 > ⚠️ untracked 파일은 검증 대상 아님 (git diff 가 보지 못함). 신규 파일은 commit 후 호출.
 
@@ -108,8 +107,7 @@ git diff $RANGE --name-only | grep -E '<ui-path-pattern>' > "$QA_TMP/ui-changed.
 | **harness-core 마커 정합** | **루트 `CLAUDE.md` 에 마커 존재 시 항상** (변경 여부 무관) | **동일** | — | <!-- 정본이 바뀌면 내 diff 와 무관하게 낡는다 -->
 | code-reviewer | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | — |
 | security-reviewer | **제외** | 코드 파일 변경 있음 | `--security` 지정 시 |
-| gemini | **제외** | **제외** | `--gemini` 지정 시 |
-| deepseek | **제외** | **제외** | `--deepseek` 지정 시 |
+| 외부 LLM (gemini · deepseek) | **제외** | **제외** | `--gemini` / `--deepseek` 지정 시 |
 | **browser** | **제외** | **UI 변경 있을 때만** | 없음 (`--branch` 전용) |
 | doc-reviewer | `$QA_TMP/doc-domain.txt` 비어있지 않음 | 동일 | — |
 | harness-reviewer | `$QA_TMP/harness-domain.txt` 비어있지 않음 | 동일 | — |
@@ -122,21 +120,7 @@ git diff $RANGE --name-only | grep -E '<ui-path-pattern>' > "$QA_TMP/ui-changed.
 
 Step 1 매칭 결과를 기준으로, 다음 순서로 진행한다.
 
-**gemini CLI 점검 (Step 1 조건표에서 gemini 실행 예정인 경우에만):**
-
-`command -v gemini` 로 CLI 존재 여부를 확인한다. 없으면 사용자에게 안내 + 분기를 묻는다:
-- 안내 문구: "gemini CLI 가 감지되지 않습니다. 설치 가이드: https://github.com/google-gemini/gemini-cli (또는 환경별 npm/brew 등)."
-- 선택지 (사용자 응답에 따라 분기):
-  - **재호출** — /qa 종료. 사용자가 직접 설치 후 /qa 재호출.
-  - **스킵 이번 호출** — gemini 제외 나머지 검증으로 계속 진행. 리포트 헤더에 `⏭️ gemini: 사용자 스킵 선택` 명시.
-
-**deepseek 키·도구 점검 (Step 1 조건표에서 deepseek 실행 예정인 경우에만):**
-
-`[ -n "$DEEPSEEK_API_KEY" ] && command -v jq >/dev/null && command -v curl >/dev/null` 단일 표현식으로 키·도구 존재를 한 번에 확인한다 (셋 중 하나라도 없으면 false). 도구는 반드시 각각 `&&` 로 분리 확인한다 — `command -v jq curl` 처럼 한 호출에 여러 도구를 넘기면 exit code 가 마지막 인자 기준이라 `jq` 부재를 놓친다. false 면 (키 / jq / curl 중 무엇이 없는지 개별 판정해) 사용자에게 안내 + 분기를 묻는다:
-- 안내 문구 (키 부재 시): "`DEEPSEEK_API_KEY` 환경변수가 감지되지 않습니다. `~/.zshrc` 등 머신 로컬 프로필에 `export DEEPSEEK_API_KEY=...` 추가 후 재호출하거나, 이번 호출은 스킵하세요. (키는 git 에 커밋하지 않습니다.)" / (jq·curl 부재 시): "deepseek 호출에 필요한 `jq`/`curl` 이 없습니다 (`brew install jq curl`)."
-- 선택지 (사용자 응답에 따라 분기):
-  - **재호출** — /qa 종료. 사용자가 키 설정/도구 설치 후 /qa 재호출.
-  - **스킵 이번 호출** — deepseek 제외 나머지 검증으로 계속 진행. 리포트 헤더에 `⏭️ deepseek: 사용자 스킵 선택` 명시.
+**외부 LLM 사전 점검 (`--gemini` / `--deepseek` 지정 시에만):** `${CLAUDE_PLUGIN_ROOT}/references/external-llm-review.md` 의 "사전 점검" 을 따른다.
 
 **node_modules 점검:**
 
@@ -171,7 +155,7 @@ node "${CLAUDE_PLUGIN_ROOT}/scripts/check-decision-versions.mjs" --write > "$QA_
 
 메인 세션이 절차를 오케스트레이션한다 (진입점 디스패처). 코드/문서 편집은 본 스킬 범위 외 — 자세한 제약은 `## 제약` 섹션 참조.
 
-**Step 3a: bash 명령 동시 (typecheck + test + lint + 조건부 schema 정합성 + 조건부 decisions 인덱스 정합 + 조건부 harness-core 마커 정합 + 조건부 build + gemini(--gemini opt-in 전용) + deepseek(--deepseek opt-in 전용))**
+**Step 3a: bash 명령 동시 (typecheck + test + lint + 조건부 schema 정합성 + 조건부 decisions 인덱스 정합 + 조건부 harness-core 마커 정합 + 조건부 build + 외부 LLM(지정 시))**
 
 Step 0 의 표에서 결정한 `RANGE` 값과 Step 1 의 확정 검증 목록을 사용한다. 실행 예정인 것만 백그라운드로 실행한다. Split 결과 파일(`$QA_TMP/md-changed.txt` 등)은 Step 1 에서 이미 생성되어 있다.
 
@@ -202,47 +186,8 @@ QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 # [ "$SSOT" = "$MINE" ] || echo "STALE: 루트 CLAUDE.md = ${MINE:-없음} / 정본 = $SSOT" > "$QA_TMP/harness-core.txt" &
 # build: --branch 또는 --build opt-in 시에만 실행
 # <build-cmd> > "$QA_TMP/build.txt" 2>&1 &
-# gemini: --gemini opt-in 시에만 실행 (--branch 자동 포함 아님)
-# --approval-mode plan: 비대화형 환경에서 tool 호출 자동 실행 차단 → 출력 노이즈 제거
-# gtimeout -k 30 600: gemini CLI 는 quota 소진(429) 시 에러 없이 무한 hang 하는 사례가 있어
-#   (oauth-personal — google-gemini/gemini-cli#22648) 결정적 한도가 없으면 wait 가 영원히 안 풀린다.
-#   초과 시 kill(exit 124/137) → 빈 gemini-result.txt → 기존 "응답 실패" 분류가 작동.
-#   hang 시 100% CPU 스핀으로 기본 SIGTERM 을 무시하는 사례가 있어 `-k 30` 추가 —
-#   600초 SIGTERM 후 30초 내 미종료 시 SIGKILL 강제 종료. (없으면 SIGTERM 무시 시 무한 대기.)
-#   gtimeout = brew coreutils (macOS 에 GNU timeout 기본 미탑재). 부재 시 즉시 exit 127 — hang 아님.
-# git diff $RANGE | gtimeout -k 30 600 gemini --approval-mode plan -p "$(cat <<'EOF'
-# 다음 diff 를 리뷰해줘.
-# 내부 reviewer(code-reviewer / security-reviewer) 가 다루지 않는 관점 중심으로 critical / suggestion / nice 로 분류해줘:
-# - 대안 설계 관점 (더 단순한 구현이 가능한가)
-# - 가독성·명명 (팀원이 오해할 여지가 있는가)
-# - 누락된 엣지 케이스 (입력 조합이나 순서 의존 문제)
-# 형식: critical → suggestion → nice 순서. 파일:line 명시. 한국어 평이체.
-# EOF
-# )" > "$QA_TMP/gemini.txt" 2>&1 &
-# deepseek: --deepseek opt-in 시에만 실행 (--branch 자동 포함 아님)
-# DeepSeek 은 OpenAI 호환 REST API — CLI 없이 curl + jq 직접 호출. CLI 설치/quota-hang 의존성 없음.
-# curl --max-time 600: 응답 지연/네트워크 hang 방어 (gemini 의 gtimeout 대응물). 초과 시 빈 결과 → "응답 실패" 분류.
-# jq -Rs: stdin(diff)을 raw 문자열로 슬러프해 JSON 으로 안전 인코딩 (특수문자 escape). 응답은 .choices[0].message.content 추출.
-# 모델: deepseek-v4-pro (추론·코드 강함, DeepSeek V4 — 2026-04-24 출시). 빠른 검토는 deepseek-v4-flash.
-#   구 deepseek-chat/deepseek-reasoner 별칭은 2026-07-24 15:59 UTC 비활성 예정이라 v4 정식 모델명을 쓴다.
-#   (최신 모델명·유효성은 공식 문서 https://api-docs.deepseek.com/quick_start/pricing 에서 확인.)
-# // empty: API 오류 응답(.error)·null 시 빈 문자열 → 빈 deepseek-result.txt → "응답 실패" 분류 작동.
-# curl stderr 는 result 오염 방지를 위해 별도 로그로 분리 (gemini 와 달리 노이즈 필터 불필요 — jq 가 content 만 추출).
-# git diff $RANGE | jq -Rs --arg sys '다음 diff 를 리뷰해줘. 내부 reviewer(code-reviewer / security-reviewer)가 다루지 않는 관점 중심으로 critical / suggestion / nice 로 분류해줘: 대안 설계(더 단순한 구현 가능 여부) / 가독성·명명(오해 여지) / 누락된 엣지 케이스(입력 조합·순서 의존). 형식: critical → suggestion → nice 순서, 파일:line 명시, 한국어 평이체.' \
-#   '{model:"deepseek-v4-pro",messages:[{role:"system",content:$sys},{role:"user",content:.}],stream:false}' \
-# | curl -sS --max-time 600 https://api.deepseek.com/chat/completions \
-#     -H "Authorization: Bearer $DEEPSEEK_API_KEY" -H "Content-Type: application/json" -d @- 2>>"$QA_TMP/deepseek-err.txt" \
-# | jq -r '.choices[0].message.content // empty' > "$QA_TMP/deepseek-result.txt" 2>>"$QA_TMP/deepseek-err.txt" &
+# 외부 LLM: --gemini / --deepseek 지정 시에만 — references/external-llm-review.md 의 실행 블록을 이 자리에서 함께 띄운다
 wait
-
-# gemini CLI 가 stdout 으로 출력하는 알려진 안내 라인만 제외 (LLM 응답 형식 변화에 강건)
-# - "Warning:" — 256-color 미감지 등 환경 경고
-# - "Ripgrep is not available" / "Falling back" — 도구 fallback 안내
-# gemini 실행 시에만 적용:
-# grep -v -E '^(Warning:|Ripgrep is not available|Falling back)' "$QA_TMP/gemini.txt" > "$QA_TMP/gemini-result.txt"
-# fallback: 추출 결과가 비어있으면 메인 세션이 "gemini 응답 실패"로 분류 (리포트 헤더에 명시)
-# deepseek 은 별도 후처리 불필요 — jq 가 이미 content 만 deepseek-result.txt 로 추출.
-#   비어있으면 메인 세션이 "deepseek 응답 실패"로 분류 (deepseek-err.txt 에 curl/HTTP 오류 단서).
 ```
 
 **Step 3b: Agent 호출 (Step 3a bash 와 병렬 실행 — 진짜 병렬)**
@@ -318,8 +263,7 @@ Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경�
 
 ### Step 4: 결과 종합 (통일 분류)
 
-> **gemini input**: `$QA_TMP/gemini-result.txt` 를 사용한다 (`$QA_TMP/gemini.txt` 전체가 아님). `$QA_TMP/gemini-result.txt` 가 비어있으면 gemini 항목을 "gemini 응답 실패"로 분류하고 리포트 헤더에 `❌ gemini: 응답 실패 (파싱 결과 없음)` 명시.
-> **deepseek input**: `$QA_TMP/deepseek-result.txt` 를 사용한다. 비어있으면 deepseek 항목을 "deepseek 응답 실패"로 분류하고 리포트 헤더에 `❌ deepseek: 응답 실패 (응답 없음 — deepseek-err.txt 참조)` 명시.
+> 외부 LLM 결과의 입력 파일 · 응답 실패 판정은 `${CLAUDE_PLUGIN_ROOT}/references/external-llm-review.md` "결과 분류" 를 따른다.
 
 | 출처 | P0 | P1 | P2 |
 |------|----------|------------|--------------|
@@ -333,8 +277,7 @@ Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경�
 | harness-core 마커 정합 | — | `$QA_TMP/harness-core.txt` 가 비어있지 않음 (정본 블록 재복사 필요 — 정책 노브 항목은 프로젝트 값 유지) | — |
 | code-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
 | security-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
-| gemini | critical (→ P0, 외부 LLM 의견 표시) | suggestion (→ P1) | nice (→ P2) |
-| deepseek | critical (→ P0, 외부 LLM 의견 표시) | suggestion (→ P1) | nice (→ P2) |
+| 외부 LLM | critical (→ P0, 외부 LLM 의견 표시) | suggestion (→ P1) | nice (→ P2) |
 | browser | console error 또는 보호 라우트 미렌더 → P0 | 비핵심 network failed → P1 | screenshot 시각 이상(주관) → P2 |
 | doc-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
 | harness-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
@@ -359,8 +302,6 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - [ ] [typecheck] `src/foo/bar.ts:12` — TS2345: ...
 - [ ] [test] `src/foo/bar.test.ts` — 실패 테스트 케이스명
 - [ ] [code-reviewer] `src/foo/baz.ts:34` — 표준 에러 클래스 미사용
-- [ ] [gemini] `src/foo/qux.ts:56` — 대안 설계 미사용으로 복잡도 과다 (외부 LLM 의견)
-- [ ] [deepseek] `src/foo/qux.ts:60` — 입력 순서 의존으로 경합 가능 (외부 LLM 의견)
 - [ ] [doc-reviewer] `docs/PHILOSOPHY.md:42` — [cross-authority-overlap] `docs/architecture.md` 의 role 에 더 적합한 단락
 - [ ] [harness-reviewer] `.claude/skills/qa/SKILL.md:78` — [skill-rnr-overlap] /pr 와 /release 가 같은 작업 양쪽에서 정의
 - [ ] [security-reviewer] `src/app/api/order/route.ts:45` — [A03: 인젝션] 사용자 입력이 SQL 쿼리에 직접 삽입됨 (parameterized query 필요)
@@ -372,8 +313,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - [ ] [code-reviewer] `src/foo/bar.ts:78` — co-located 테스트 누락
 
 ### P2
-- [ ] [gemini] `src/foo/bar.ts:90` — 변수명 명확도 개선 (외부 LLM 의견)
-- [ ] [deepseek] `src/foo/baz.ts:14` — 조기 반환으로 중첩 감소 가능 (외부 LLM 의견)
+- [ ] [code-reviewer] `src/foo/bar.ts:90` — 변수명 명확도 개선
 
 ### Pre-existing (이 변경이 만들지 않음 — 머지 게이트 비포함)
 - [ ] [code-reviewer] `src/foo/old.ts:5` — 변경 전부터 있던 결함 (이슈화 후보)
@@ -392,8 +332,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
 - `code-reviewer`: ✅ 완료 / ⏭️ `--skip-code-review` 사용자 명시 스킵
 - `security-reviewer`: ✅ 완료 / ⏭️ 단발 기본 — 스킵 / ⏭️ 코드 변경 없음 — 스킵
-- `gemini`: ✅ 완료 / ⏭️ 단발/풀 공통 — 스킵 (`--gemini` 명시 시에만) / ⏭️ 사용자 스킵 선택 / ❌ 응답 실패
-- `deepseek`: ✅ 완료 / ⏭️ 단발/풀 공통 — 스킵 (`--deepseek` 명시 시에만) / ⏭️ 사용자 스킵 선택 / ❌ 응답 실패
+- 외부 LLM: 지정했을 때만 도구별 한 줄 (표기는 `references/external-llm-review.md` "결과 분류")
 - `doc-reviewer`: ✅ 완료 / ⏭️ doc 도메인 변경 없음 — 스킵
 - `harness-reviewer`: ✅ 완료 / ⏭️ 하네스 도메인 변경 없음 — 스킵
 ```
@@ -512,22 +451,17 @@ git diff "${LAST_QA_SHA}..HEAD" --name-only --diff-filter=d > "$QA_TMP/reverify-
 직전 findings:
 <직전_라운드_findings_목록>
 
-출력 제약:
-- 각 finding 은 파일:line + 1문장으로 표현. 설명 이상의 서술 금지.
-- 통과 항목(수정 확인됨) 서술 금지.
-- 리포트는 findings 목록과 요약 카운트(P0/P1/P2/Pre-existing 건수)만 포함.
+출력:
+- 새 finding 은 파일:line 과 근거를 함께 적는다 — 고치는 쪽이 이유를 다시 찾지 않아도 되게.
+- 수정이 확인된 항목은 항목당 한 줄로만 적는다.
+- 끝에 요약 카운트(P0/P1/P2/Pre-existing 건수).
 ```
 
 **4. 풀 검증 항목 승계 원칙**
 
 security-reviewer / build 등 `--branch` 전용 항목과 외부 LLM 리뷰(`--gemini`/`--deepseek` opt-in 시)는 재검증 라운드에서 기본 재실행하지 않는다. 실질 delta(새 로직·새 파일·의미 변경)가 있을 때만 재실행한다.
 
-**외부 LLM 재실행 시 기각 목록 전달**: gemini/deepseek 를 재실행하는 경우, 직전 라운드까지 사용자가 기각 확정한 findings 의 요약 목록을 프롬프트에 포함한다:
-
-```
-이미 검토 후 기각 확정된 항목 — 재보고 금지:
-<기각_확정_findings_요약_목록>
-```
+외부 LLM 을 다시 돌릴 때의 기각 목록 전달은 `${CLAUDE_PLUGIN_ROOT}/references/external-llm-review.md` "결과 분류" 를 따른다.
 
 ### marker 합성 판정
 
