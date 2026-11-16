@@ -167,9 +167,9 @@ wait
 - **RANGE**: "Round N Iteration k 의 developer 가 만든 commit 들의 누적 diff (= 직전 iteration 대비 변경분)" — 좁은 범위로 고정 (브랜치 전체 X). 산출: `git diff <iteration k 시작 SHA>..HEAD`. 프롬프트에 "이전 iteration 대비 변경분" 임을 명시해 병렬 developer 다중 이슈 시 리뷰 노이즈를 줄인다.
 - 호출 출처: "/plan 스킬 Round N Iteration k 자동 리뷰"
 - reviewer 는 bash 검증 결과와 무관하게 코드 리뷰만 수행한다.
-- **출력 강제**:
+- **출력**:
   - findings 항목마다 **연관 이슈(#N) 명시** — 다음 iteration developer 위임 시 이슈별 매핑에 활용
-  - 각 finding 은 `파일:line` + 1문장 설명으로 제한, 전체 50줄 이하
+  - 각 finding 은 `파일:line` 과 근거를 함께 — 다음 iteration 의 developer 가 이유를 다시 찾지 않아도 되게
   - 묶음 전체 diff 를 보고 cross-issue 패턴 위반 / 중복 / 결합 직후 문제도 함께 검출
 
 #### Step 4c: 루프 종료 판정

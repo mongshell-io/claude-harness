@@ -18,10 +18,9 @@ GitHub PR 생성의 단일 진입점. 브랜치명(1순위) 또는 커밋 메시
 
 ## 브랜치 규약 (본 스킬이 단일 권위)
 
-- **git 브랜치명 = worktree 통일 키**. 키는 **첫 push 전에** 최종 이름으로 확정하고, **push 후 리네임 금지** (preview 인프라 리소스 고아화 — 스택별 상세: `${CLAUDE_PLUGIN_ROOT}/references/infra-gotchas.md`). 한 worktree = 한 브랜치.
+- **한 worktree = 한 브랜치.** 이름은 **첫 push 전에** 최종 이름으로 확정하고 push 뒤에는 바꾸지 않는다 — 원격에 옛 이름 브랜치가 남고, 이미 열린 PR 은 head 를 잃는다.
 - 단발 이슈: `(feat|fix|chore|refactor|docs|ci)/issue-N-<slug>`. 연관 이슈 동시 처리 시 `-N-M-` 형태 허용.
   - **`docs/`** = 문서 파일만 바꾸는 작업, **`ci/`** = CI·워크플로(`.github/**`)만 바꾸는 작업. 코드가 한 줄이라도 섞이면 `chore/`·`fix/` 등을 쓴다.
-    소비 프로젝트는 이 두 접두의 preview 배포를 끌 수 있다(설정·권위 = 프로젝트 `docs/development.md`). 이름이 곧 배포 여부라 섞인 변경에 쓰면 preview 없이 머지된다.
 - 마일스톤 사이클 (`/plan` 단위): `cycle/<slug>` — 버전 숫자를 브랜치명에 박지 않는다 (버전 SSOT = git tag max, `/release` 시점 계산). type-free prefix.
 - `<slug>` 는 kebab-case (소문자 + 하이픈).
 
@@ -39,7 +38,7 @@ GitHub PR 생성의 단일 진입점. 브랜치명(1순위) 또는 커밋 메시
     사용자가 호출 시점에 "qa 건너뛰어/skip" 을 미리 말했을 때만 건너뛰고, 아래 "QA marker 없음" 라인을 본문에 넣는다.
   - 비고: `/tmp` 는 재부팅 시 휘발되어 파일이 사라진다. 이때 안전한 방향(재검증 권고)으로 폴백된다.
 - 현재 브랜치 = `main` → "feature 브랜치에서 호출해 주세요"
-- 브랜치명이 `^claude/` (auto-worktree 패턴) → **묻지 않고** 아래 "브랜치 규약" 이름으로 `git branch -m` 한 뒤 진행한다 (예: `chore/issue-N-<slug>`, 사이클이면 `cycle/<slug>`). 이미 push 된 브랜치면 리네임하지 않고 stop + 안내. 리네임 → push 순서 강제 = 통일 키(git 브랜치명)를 push 전 확정해 preview 인프라 리소스 고아화 방지 (아래 "브랜치 규약" — 리네임 불변식).
+- 브랜치명이 `^claude/` (auto-worktree 패턴) → **묻지 않고** 아래 "브랜치 규약" 이름으로 `git branch -m` 한 뒤 진행한다 (예: `chore/issue-N-<slug>`, 사이클이면 `cycle/<slug>`). 이미 push 된 브랜치면 리네임하지 않고 stop + 안내. (위 "브랜치 규약").
 - `git status` 결과 dirty → status 출력 + "commit 먼저"
 - `gh auth status` 미인증 → "`gh auth login` 후 재호출"
 - `gh pr list --head <branch>` 결과 있음 → 기존 PR URL 안내

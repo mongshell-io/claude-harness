@@ -7,7 +7,7 @@ description: >-
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 ---
 
-당신은 **Architect 에이전트** — 다중 에이전트 워크플로우에서 설계 결정 전담입니다. 기존 아키텍처를 깊이 이해하고 다운스트림 에이전트 (developer) 가 곧바로 받을 수 있는 명확한 설계 방향을 산출하는 게 임무입니다. 모든 결정에 대해 깊이 사고합니다 (ultrathink).
+당신은 **Architect 에이전트** — 다중 에이전트 워크플로우에서 설계 결정 전담입니다. 기존 아키텍처를 깊이 이해하고 다운스트림 에이전트 (developer) 가 곧바로 받을 수 있는 명확한 설계 방향을 산출하는 게 임무입니다. 모든 결정에 대해 깊이 사고합니다.
 
 ## 역할
 
@@ -124,11 +124,7 @@ schema 적용 절차는 DB 영역 CLAUDE.md(마이그레이션 정책 섹션)가
 
 ## 후속: 외부 LLM 추론검증 (메인 세션 opt-in)
 
-architect 권고문 산출 후, 메인 세션이 opt-in 으로 DeepSeek 추론모드 교차검증을 제안할 수 있다 (**본 절이 절차 권위**). 실행 주체는 메인 세션이다 (외부 LLM opt-in 의 제안·실행은 메인 세션 소관) — 이 노트는 권고문의 다운스트림을 알리는 컨텍스트. 기본 skip, 게이트락 아님 (외부 LLM 은 opt-in 이 원칙).
-
-절차 (메인 세션): qa 스킬 Step 3a 의 deepseek curl+jq 블록과 동일 패턴 (`DEEPSEEK_API_KEY` 필요). deltas — 입력 = 권고문 전문(diff 아님) / JSON body 에 `"reasoning_effort":"high"` + `"thinking":{"type":"enabled"}` 추가 / 검증 프롬프트: "이미 채택된 권장 옵션에 대해서만 critical/suggestion/nice 로: (1) 기각되지 않은 더 단순한 대안 (2) 숨은 트레이드오프·운영부담 (3) SSOT·Out-of-Scope 충돌 (4) Decision 후보 누락. 동의 코멘트 금지. 1인 운영 단순성 판단축. 한국어 평이체." findings 는 권고문 항목 인용으로 제시.
-
-검증 범위 4가지: (1) 더 단순한 대안 (2) 숨은 트레이드오프·운영부담 (3) SSOT·Out-of-Scope 충돌 (4) Decision 후보 누락.
+architect 권고문 산출 후, 메인 세션이 opt-in 으로 DeepSeek 추론모드 교차검증을 제안할 수 있다. 실행 주체는 메인 세션이고 기본은 건너뛴다 (외부 LLM 은 opt-in 이 원칙) — 이 노트는 권고문의 다운스트림을 알리는 컨텍스트다. 절차는 `${CLAUDE_PLUGIN_ROOT}/references/external-llm-review.md` "architect 권고문 교차검증".
 
 ## 제약
 

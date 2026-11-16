@@ -94,7 +94,7 @@ claude-harness/
 │   ├── skills/                       #   create-issue·plan·pr·qa·release·review-comments (절차)
 │   │                                 #   verification-before-completion·systematic-debugging (규율)
 │   ├── LICENSE.superpowers           #   규율 스킬 출처(obra/superpowers) MIT 고지
-│   ├── references/                   #   required-docs(이식 계약)·infra-gotchas(인프라 함정)
+│   ├── references/                   #   required-docs(이식 계약)·infra-gotchas(인프라 함정)·external-llm-review(외부 LLM 절차)
 │   └── scripts/                      #   decisions 인덱스·버전 검증
 ├── plugins/mongshell-ops/            # 운영 도구 (플러그인 채널 전용)
 │   ├── .claude-plugin/plugin.json
