@@ -69,7 +69,7 @@ tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 - **패턴 일관성** — 기존 도메인 구조와 얼마나 맞는지
 - **SSOT 위반 가능성** — Entity 타입 중복, schema 분산 등
 - **회귀 위험** — 기존 동작에 영향을 주는 공유 파일 변경 여부
-- **SOLID 정합성** — 옵션이 결합을 끊는 방향인지 / 선제 추상화(OCP·DIP 오용)는 아닌지. 기준: `docs/PHILOSOPHY.md` Design Principles "SOLID".
+- **SOLID 정합성** — 옵션이 결합을 끊는 방향인지 / 선제 추상화(OCP·DIP 오용)는 아닌지. 기준: `docs/PHILOSOPHY.md` Design Principles 에 "SOLID" 항목이 있으면 그 항목.
 
 ### 4. RISK
 

@@ -255,9 +255,8 @@ gh api -X PATCH repos/{owner}/{repo}/milestones/{N} -f state=closed
 > - 워크트리 동기화: release 는 더 이상 워크트리를 origin/main 과 맞춰주지 않습니다. **호출 워크트리 포함** 모든 워크트리를 수동으로 동기화하세요.
 >   - working directory 가 **clean** 이면 `git fetch && git reset --hard origin/main`
 >   - **dirty** (작업 중인 변경 있음) 면 `git fetch && git merge --ff-only origin/main`
-> - 다음 milestone 생성:
->   - **MAJOR (Y) bump**: `gh api -X POST repos/{owner}/{repo}/milestones -f title="v(X.Y+1).0"`
->   - **PROJECT (X) bump**: `gh api -X POST repos/{owner}/{repo}/milestones -f title="v(X+1).0.0"`
+> - 다음 milestone 생성 (제목 관행은 프로젝트를 따른다):
+>   - **MAJOR (Y) · PROJECT (X) bump**: `gh api -X POST repos/{owner}/{repo}/milestones -f title="<다음 milestone 제목>"` — 버전형 제목을 쓰는 프로젝트면 `v(X.Y+1).0` / `v(X+1).0.0`
 >   - **MINOR (Z) bump**: 현재 milestone 이 진행 중이므로 신규 생성 불필요
 
 ---

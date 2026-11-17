@@ -12,7 +12,7 @@ milestone 단위 multi-issue 사이클의 오케스트레이션 진입점. `gh i
 
 ## 언제 호출하는가
 
-- `/plan v0.8.0` 같은 명시 호출 (milestone 인자 권장)
+- `/plan v0.8.0` · `/plan "<테마 제목>"` 같은 명시 호출 (milestone 인자 권장 — 제목이 버전형이든 테마형이든 프로젝트 관행대로)
 - "사이클 계획 짜줘", "v0.8.0 계획", "이번 milestone", "next version"
 - ⚠️ 자동 호출 X. 사용자가 명시적으로 호출해야 한다. milestone 단위 오케스트레이션은 개발 흐름 전체에 영향을 주므로 우발적 실행을 방지한다 (`/release` 와 동일한 이유).
 - ⚠️ "roadmap" 키워드는 트리거 아님 — milestone 단위 오케스트레이션과 backlog 조회는 다른 작업이다.
@@ -23,7 +23,7 @@ milestone 단위 multi-issue 사이클의 오케스트레이션 진입점. `gh i
 
 - `gh auth status` 로 인증 상태 확인. 미인증이면 `gh auth login` 안내 후 stop.
 - 인자 파싱:
-  - `/plan vX.Y.0` → milestone 직접 지정, Step 1 로 진행
+  - `/plan <milestone>` → milestone 직접 지정, Step 1 로 진행
   - `/plan` (인자 없음) → `gh api repos/{owner}/{repo}/milestones --jq '.[] | {number, title}'` 로 open 마일스톤을 직접 조회한다 (이슈 경유 역산은 limit 절단·빈 마일스톤 미검출·closed 혼입이 있어 금지). 가장 낮은 번호(가장 가까운 milestone)를 제안하고 **사용자 confirm** 대기. 확인되면 Step 1 진행.
   - milestone 자체가 없으면 `gh issue list --label next` 결과를 후보로 제시하고 "milestone 부여 여부는 사용자 결정입니다" 안내 후 stop. `/plan` 은 milestone 기반으로만 사이클을 운영한다.
 - 마일스톤 브랜치 안내: 사이클 시작 시 `cycle/<slug>` 브랜치를 생성/체크아웃하도록 권고. 이미 다른 브랜치에 있어도 강제 X — "현재 브랜치: `<name>`. 사이클 브랜치 컨벤션 `cycle/<slug>` 권장. 그대로 진행할까요?" 형식으로 안내만.
@@ -31,10 +31,10 @@ milestone 단위 multi-issue 사이클의 오케스트레이션 진입점. `gh i
 ### Step 1: 대상 이슈 수집
 
 ```bash
-gh issue list --milestone vX.Y.0 --state open --json number,title,body,labels
+gh issue list --milestone "<milestone>" --state open --json number,title,body,labels
 ```
 
-- 이슈가 0개면 "milestone vX.Y.0 에 open 이슈가 없습니다. milestone 확인 후 재호출해 주세요." 안내 후 stop.
+- 이슈가 0개면 "milestone <milestone> 에 open 이슈가 없습니다. milestone 확인 후 재호출해 주세요." 안내 후 stop.
 - 각 이슈의 body 를 `gh issue view <N>` 으로 보완 수집한다 (목록 API 는 body 를 truncate 할 수 있음).
 
 ### Step 2: 의존성 분석 + 라운드 분할
@@ -66,9 +66,9 @@ gh issue list --milestone vX.Y.0 --state open --json number,title,body,labels
 다음 형식으로 계획서를 출력하고 **사용자 confirm** 을 대기한다.
 
 ```markdown
-## vX.Y.0 사이클 계획
+## <milestone> 사이클 계획
 
-**Milestone**: vX.Y.0
+**Milestone**: <milestone>
 **대상 이슈**: #N, #M, #P (총 N개)
 
 ### 의존성 그래프
@@ -230,7 +230,7 @@ wait
 모든 라운드와 `/qa` 게이트를 통과하면 다음을 출력한다.
 
 ```markdown
-## 사이클 완료: vX.Y.0
+## 사이클 완료: <milestone>
 
 완료 이슈: #N, #M, #P
 라운드 수: N 라운드
@@ -267,7 +267,7 @@ wait
 
 - 메인 세션 = 오케스트레이터 원칙: 소비 프로젝트 루트 `CLAUDE.md` 작업 규약 코어 「오케스트레이터」
 - 스킬 경계 전체: 위 표 + 각 SKILL.md
-- 이슈 조회: `gh issue list --milestone vX.Y.0 --state open`
+- 이슈 조회: `gh issue list --milestone "<milestone>" --state open`
 - 라벨 정책: create-issue 스킬 (라벨 3축 단일 권위)
 - 검증 분류 기준: [qa/SKILL.md](../qa/SKILL.md)
 - 릴리스 흐름: [release/SKILL.md](../release/SKILL.md)

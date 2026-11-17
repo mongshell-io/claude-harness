@@ -145,6 +145,7 @@ non_goals:
 - `In Scope` — 프로젝트 범위 정의. architect 의 정합성 1차 검토 기준.
 - `Out of Scope` — 의도적 미구현 명시. 신기능 제안 거절 근거.
 - `Design Principles` — 설계 원칙. architect 의 의사결정 원칙 + `docs/design.md` §1 의 derive 출발점.
+  - (선택) 그 안의 `SOLID` 항목 — 모듈 경계·결합 원칙(SOLID · 점진 진화 등). architect · developer · code-reviewer 가 이 이름으로 가리키며, 항목이 없는 프로젝트에서는 그 기준만 빠진다.
 
 ---
 
