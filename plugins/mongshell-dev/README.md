@@ -155,7 +155,7 @@ flowchart LR
 
 | reviewer | read-target | 검출 도메인 |
 |---|---|---|
-| `doc-reviewer` | `docs/architecture-decisions.md` | `**/*.md` 중 하네스 루트 밖 |
+| `doc-reviewer` | `docs/architecture-decisions.md` — 인용이 `harness-decisions.md` 를 파일 이름과 함께 밝혔으면 그 인용만 `docs/harness-decisions.md` (판정 규칙은 doc-reviewer 본문) | `**/*.md` 중 하네스 루트 밖 |
 | `harness-reviewer` | `docs/harness-decisions.md` + `docs/architecture-decisions.md` (양쪽) | 하네스 루트 아래 `**/*.md` |
 
 ---
@@ -197,7 +197,7 @@ skill / agent 가 참조하는 프로젝트 권위 문서(`docs/**`, 영역별 `
 - **외부 의존 스택** — 사용 중인 ORM / 큐 / 인증 / 빌드 도구 이름 (예: Next.js, Drizzle, shadcn, Vitest, Biome). 대신 역할 표현 ("DB 마이그레이션 명령", "테스트 러너", "린터").
 - **도메인 / 비즈니스 용어** — 프로젝트 이름, 핵심 도메인명, 표준 에러 클래스명 등. 대신 "이 프로젝트" / "프로젝트의 표준 에러 패턴" 등.
 - **정책 수치** — 라벨 목록, 구체 버전 패턴 등 프로젝트마다 달라지는 값.
-- **하네스 카운트 표현** — "N종" / "N가지" 같이 하네스 안의 검증 단계 / 서브에이전트 / 도구 등을 정량 카운트하는 표현. 하네스 변경마다 본문 동기화 부담이 누적되고, 의미가 다른 카운트끼리 숫자 충돌이 발생함. 대신 항목 나열 / 역할 표현 ("다중 검증" / "bash 명령 + Agent 호출" 등). 외부 표준·스펙이 정한 고정 항목 수는 예외. 과거 Decision 스냅샷(`docs/harness-decisions.md` / `docs/architecture-decisions.md` 본문) 은 본 규칙의 적용 대상이 아니다.
+- **하네스 카운트 표현** — "N종" / "N가지" 같이 하네스 안의 검증 단계 / 서브에이전트 / 도구 등을 정량 카운트하는 표현. 하네스 변경마다 본문 동기화 부담이 누적되고, 의미가 다른 카운트끼리 숫자 충돌이 발생함. 대신 항목 나열 / 역할 표현 ("다중 검증" / "bash 명령 + Agent 호출" 등). 외부 표준·스펙이 정한 고정 항목 수는 예외. 결정 기록(`docs/harness-decisions.md` / `docs/architecture-decisions.md` 와 그 archive)의 본문은 본 규칙의 적용 대상이 아니다 — 하네스 본문이 아니라 프로젝트 문서다.
 
 - **프로젝트 고유 이슈·Decision 번호의 권위 인용** — 다른 프로젝트에서 존재하지 않는 참조가 된다. 형식 예시와 상위 저장소(도구 자체) 이슈 인용은 예외.
 - **required-docs 계약 밖의 docs/ 의존성** — 새 문서 의존을 추가하려면 `references/required-docs.md` 에 contract 를 함께 추가한다.

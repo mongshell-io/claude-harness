@@ -220,6 +220,8 @@ non_goals:
 
 frontmatter 없음 — doc-reviewer 일반 문서 skip / `adr-content-mismatch` 대조 read 대상.
 
+결정 기록을 쓰는 방식 — Decision 을 스냅샷으로 쌓는가, 지금 참인 것만 남기고 고쳐 쓰기 전 원문을 archive 로 내리는가 — 의 권위는 **그 프로젝트 결정 문서의 머리말**이다. 하네스는 어느 쪽도 전제하지 않고 아래 구조만 요구한다.
+
 ### 하네스가 요구하는 본문 구조
 
 - **`## Decision N: <제목>` 헤더 형식** — 콜론 + 제목 필수 (`${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs` 의 헤더 정규식 `^## Decision (#?\d+(?:-\d+)?):` 이 콜론을 앵커로 요구). `N` 은 레거시 순번(정수, 예: `76`) 또는 신규 이슈 식별자(`#` 접두, 예: `#992`; 한 이슈 다결정 시 `#992-1`) — 식별자 정규식 `#?\d+(-\d+)?`. doc-reviewer / harness-reviewer 의 `adr-content-mismatch` 검증 정규식이 이 식별자 형식을 가정.
@@ -227,7 +229,8 @@ frontmatter 없음 — doc-reviewer 일반 문서 skip / `adr-content-mismatch` 
   - **버전 값은 손으로 쓰지 않는다 — 생성물이다.** Decision 을 작성하는 시점(기능 PR)엔 도입 버전을 알 수 없으므로 placeholder 로 적고, 릴리스 후 `/qa` 의 write 게이트(`check-decision-versions.mjs --write`)가 `(#이슈)` → first-parent 커밋 → 최초 포함 태그로 파생해 채운다. SSOT 는 여전히 git tag — 문서는 그 파생 표시일 뿐이다.
   - **placeholder 표준 표기 = `미정`** → `- **도입**: 미정 (#992)`. 레거시 표기(`v3.x.x` / `(예정)` / `확정`)도 판정에는 지장이 없고, write 게이트가 값 세그먼트를 통째로 교체할 때 함께 표준형으로 정규화된다. `v3.x.x` 류는 major 를 손으로 추측하는 표기라 새로 쓰지 않는다.
   - `(#이슈)` 는 **반드시** 남긴다 — 없으면 스크립트가 UNRESOLVED 로 표면화하고 자동 확정이 불가능하다.
-- 각 Decision 본문에 **결정·이유·결과** 세 요소 — `adr-content-mismatch` 검증 시 인용 맥락과 이 셋 중 어느 하나의 직접 연결 여부를 대조 확인.
+- 각 Decision 본문에 **결정·이유·결과** 세 요소 (최소 계약) — `adr-content-mismatch` 검증 시 인용 맥락과 이 셋 중 어느 하나의 직접 연결 여부를 대조 확인.
+  - 모양은 정하지 않는다 — 서술 단락이든, 도입 줄 다음에 라벨 항목(`결정` · `이유` 등)을 나열하는 모양이든 세 요소가 읽히면 만족한다. 「결과」 는 그 결정으로 지금 무엇이 참인가이고, 따로 라벨이 없어도 결정 조항에서 읽히면 된다.
 - **`## 상태 인덱스` 표** — 모든 Decision 헤더와 1:1 대응(각 식별자가 한 행). `${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs` 가 헤더 집합 ↔ 인덱스 집합을 대조해 MISSING(헤더에만)/DANGLING(인덱스에만)/중복을 검출한다 (개수 비교 아님 — `/qa` 가 decisions 파일 변경 시 실행).
 
 ---
@@ -235,7 +238,7 @@ frontmatter 없음 — doc-reviewer 일반 문서 skip / `adr-content-mismatch` 
 ## 다루지 않는 것
 
 - **영역별 `CLAUDE.md`** — 프로젝트 디렉토리 구조에 따라 가변. 작성 가이드는 [README.md](./README.md) 의 "영역별 `CLAUDE.md` 작성" 섹션.
-- **`docs/harness-decisions.md`** — 프로젝트 로컬 결정 로그 (`docs/architecture-decisions.md` 와 동급). 이식 시 내용 리셋. frontmatter 없으므로 doc-reviewer 는 일반 문서로 skip. harness-reviewer 가 `adr-content-mismatch` 대조 참조용으로 read (본문 정합 검증 주체 아님).
+- **`docs/harness-decisions.md`** — 프로젝트 로컬 결정 기록 (`docs/architecture-decisions.md` 와 동급). 하네스와 함께 배포되지 않는다 — 프로젝트마다 자기 것을 쓰고, 없어도 된다. frontmatter 없으므로 doc-reviewer 는 일반 문서로 skip. `adr-content-mismatch` 대조 참조용으로만 read 된다 — harness-reviewer, 그리고 인용이 이 파일을 이름과 함께 밝힌 경우의 doc-reviewer (둘 다 본문 정합 검증 주체 아님).
 
 ---
 
@@ -245,7 +248,7 @@ frontmatter 없음 — doc-reviewer 일반 문서로 skip.
 
 ### 하네스가 요구하는 본문 구조
 
-- `architecture-decisions.md` 에서 번복·대체 확정된 Decision 원문을 무수정 보존. `## Decision N: <제목>` 헤더 형식(콜론 + 제목 필수, 레거시 순번 또는 `#이슈` 식별자 — live 파일과 동일 계약) 유지.
+- `architecture-decisions.md` 에서 내린 Decision 원문을 무수정 보존 — 무엇을 내리는지(번복·대체된 Decision 만인가, 고쳐 쓰기 전 본문도인가)는 live 파일 머리말이 권위. `## Decision N: <제목>` 헤더 형식(콜론 + 제목 필수, 레거시 순번 또는 `#이슈` 식별자 — live 파일과 동일 계약) 유지.
 - **`## 목차` 표** — 보관된 Decision 의 네비게이션 인덱스(TOC). 상태·supersede 권위가 아니라(그건 live 파일 `상태 인덱스`) 네비게이션용. `${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs` 가 목차 ↔ 헤더 집합 대조로 검증.
 
 ### 참조하는 agent/skill
