@@ -99,7 +99,7 @@ QA_SUMMARY=$(cat "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)"
 
 ## Risk
 <Low / Medium / High> — <한 줄 이유. $QA_SUMMARY 의 "위험 경로" 가 "없음" 이 아니면 High 로 제안하고 그 경로를 적는다.
-High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). High 조건만 루트 CLAUDE.md 작업 규약 코어("위험 등급" — 프로젝트가 High 경로 집합을 나열했으면 그 집합)가 정의한다 —
+High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). High 조건만 루트 CLAUDE.md 작업 규약 코어가 정의한다("위험 등급" — "정책 노브" 가 High 경로 집합을 나열하고 있으면 그 집합) —
 Low/Medium 은 사용자 판단(기본 제안 Low)>
 
 ## How to revert

@@ -145,7 +145,7 @@ non_goals:
 - `In Scope` — 프로젝트 범위 정의. architect 의 정합성 1차 검토 기준.
 - `Out of Scope` — 의도적 미구현 명시. 신기능 제안 거절 근거.
 - `Design Principles` — 설계 원칙. architect 의 의사결정 원칙 + `docs/design.md` §1 의 derive 출발점.
-  - (선택) 그 안의 `SOLID` 항목 — 모듈 경계·결합 원칙(SOLID · 점진 진화 등). architect · developer · code-reviewer 가 이 이름으로 가리키며, 항목이 없는 프로젝트에서는 그 기준만 빠진다.
+  - (선택) 그 안의 `SOLID` 항목 — 모듈 경계·결합 원칙(SOLID · 점진 진화 등). architect · developer · code-reviewer 가 이 이름으로 가리키며, 항목이 없는 프로젝트에서는 PHILOSOPHY 참조만 빠지고 판정은 에이전트 본문 문구로 한다.
 
 ---
 
@@ -239,7 +239,7 @@ frontmatter 없음 — doc-reviewer 일반 문서 skip / `adr-content-mismatch` 
 ## 다루지 않는 것
 
 - **영역별 `CLAUDE.md`** — 프로젝트 디렉토리 구조에 따라 가변. 작성 가이드는 [README.md](./README.md) 의 "영역별 `CLAUDE.md` 작성" 섹션.
-- **`docs/harness-decisions.md`** — 프로젝트 로컬 결정 기록 (`docs/architecture-decisions.md` 와 동급). 하네스와 함께 배포되지 않는다 — 프로젝트마다 자기 것을 쓰고, 없어도 된다. frontmatter 없으므로 doc-reviewer 는 일반 문서로 skip. `adr-content-mismatch` 대조 참조용으로만 read 된다 — harness-reviewer, 그리고 인용이 이 파일을 이름과 함께 밝힌 경우의 doc-reviewer (둘 다 본문 정합 검증 주체 아님).
+- **`docs/harness-decisions.md`** — 프로젝트 로컬 결정 기록 (`docs/architecture-decisions.md` 와 동급). 하네스와 함께 배포되지 않는다 — 프로젝트마다 자기 것을 쓰고, 없어도 된다. frontmatter 없으므로 doc-reviewer 는 일반 문서로 skip. 에이전트는 `adr-content-mismatch` 대조 참조용으로만 read 한다 — harness-reviewer, 그리고 인용이 이 파일을 이름과 함께 밝힌 경우의 doc-reviewer (둘 다 본문 정합 검증 주체 아님). 스크립트도 이 파일을 다룬다 — `check-decisions-index.mjs` 가 읽고, `check-decision-versions.mjs` 가 읽고 `--write` 로 도입 줄을 채운다. 그래서 구조 계약은 `docs/architecture-decisions.md` 절과 같다.
 
 ---
 
@@ -250,8 +250,9 @@ frontmatter 없음 — doc-reviewer 일반 문서로 skip.
 ### 하네스가 요구하는 본문 구조
 
 - `architecture-decisions.md` 에서 내린 Decision 원문을 무수정 보존 — 무엇을 내리는지(번복·대체된 Decision 만인가, 고쳐 쓰기 전 본문도인가)는 live 파일 머리말이 권위. `## Decision N: <제목>` 헤더 형식(콜론 + 제목 필수, 레거시 순번 또는 `#이슈` 식별자 — live 파일과 동일 계약) 유지.
+- **같은 식별자의 헤더는 하나** — 같은 Decision 을 다시 내릴 때는 헤더를 새로 만들지 않고 그 항목 아래에 덧붙인다 (`check-decisions-index.mjs` 가 헤더 중복을 불일치로 본다).
 - **`## 목차` 표** — 보관된 Decision 의 네비게이션 인덱스(TOC). 상태·supersede 권위가 아니라(그건 live 파일 `상태 인덱스`) 네비게이션용. `${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs` 가 목차 ↔ 헤더 집합 대조로 검증.
-- **`docs/harness-decisions-archive.md`** (선택) — `harness-decisions.md` 의 원문을 따로 보관하는 프로젝트의 파일(두 live 파일의 순번이 겹쳐 한 archive 에 섞을 수 없을 때). 계약은 위 두 항목과 같고, 같은 스크립트가 파일이 있으면 똑같이 검사한다.
+- **`docs/harness-decisions-archive.md`** (선택) — `harness-decisions.md` 의 원문을 따로 보관하는 프로젝트의 파일(두 live 파일의 순번이 겹쳐 한 archive 에 섞을 수 없을 때). 계약은 위 항목들과 같고, 같은 스크립트가 파일이 있으면 똑같이 검사한다.
 
 ### 참조하는 agent/skill
 

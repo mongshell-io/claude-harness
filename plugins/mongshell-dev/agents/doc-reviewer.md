@@ -123,8 +123,8 @@ fd ".*\.md" docs/ -x head -n 30  # frontmatter 영역만 빠르게 스캔
 
 하네스 `README.md` § "Decision 참조 검증 (adr-content-mismatch 공통 절차)" 를 따른다.
 - read 대상 — 인용마다 표기로 정한다. `docs/architecture-decisions.md` 와 `docs/harness-decisions.md` 는 순번이 겹칠 수 있어(같은 `Decision 11` 이 두 파일에 따로 있을 수 있다) 식별자만으로는 가를 수 없다:
-  - 파일 이름 없이 `Decision N` / `Decision #N` 만 있는 인용 → `docs/architecture-decisions.md`
-  - `harness-decisions.md` 를 파일 이름과 함께 밝힌 인용 (예: `harness-decisions.md Decision 11`, `[Decision 11](docs/harness-decisions.md#…)`) → `docs/harness-decisions.md`. 그 파일이 없는 프로젝트에서는 이 인용의 대조를 건너뛴다 (하네스 `README.md` § "권위 문서 부재 시 동작").
+  - 파일 이름 없이 `Decision N` / `Decision #N` 만 있는 인용 → `docs/architecture-decisions.md`. 거기에 그 식별자가 없는데 `docs/harness-decisions.md`(있는 프로젝트)에는 있으면 「존재하지 않는 Decision」 으로 단정하지 않는다 — 「`architecture-decisions.md` 에 없음, `harness-decisions.md` 에 있음 — 파일 이름 표기 누락 가능」 으로 보고한다.
+  - `harness-decisions.md` 를 파일 이름과 함께 밝힌 인용 — 그 파일이 인용과 같은 링크의 대상이거나 같은 문장 안에 적힌 경우 (예: `harness-decisions.md Decision 11`, `[Decision 11](docs/harness-decisions.md#…)`) → `docs/harness-decisions.md`. 그 파일이 없는 프로젝트에서는 이 인용의 대조를 건너뛴다 (하네스 `README.md` § "권위 문서 부재 시 동작").
 - 검출 도메인 = `**/*.md` 중 하네스 루트 밖 (frontmatter 있는 권위 문서만. 일반 문서 및 harness 도메인은 적용 X)
 
 각 위반은 다음 정보 포함:
