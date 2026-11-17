@@ -2,7 +2,7 @@
 name: code-reviewer
 description: >-
   코드 변경 사항을 머지 전에 검토할 때 사용.
-  직접 호출 또는 /qa 스킬에서 코드 변경 시 호출 (구현 완료 후). 코드 리뷰 수행.
+  직접 호출 또는 /qa · /plan 스킬에서 코드 변경 시 호출 (구현 완료 후). 코드 리뷰 수행.
   입력 도메인은 본문 '## 입력 도메인' 참조 (코드 파일 전용, `.md` 는 다른 reviewer 영역).
 tools: Read, Grep, Glob, Bash
 ---

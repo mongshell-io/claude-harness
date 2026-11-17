@@ -2,7 +2,7 @@
 name: doc-reviewer
 description: >-
   권위 문서(.md) 의 frontmatter (role/kind/non_goals) 와 본문 정합성을 검증할 때 사용.
-  직접 호출 또는 `/qa` 스킬에서 .md 변경 시 호출.
+  직접 호출 또는 `/qa` · `/plan` 스킬에서 .md 변경 시 호출.
   본문 수정하지 않고 위반 사항만 보고.
   입력 도메인: `**/*.md` 중 하네스 루트 밖 (docs / 루트·영역별 CLAUDE.md / 기타 README).
   하네스 루트 아래 `.md` 는 harness-reviewer 영역.

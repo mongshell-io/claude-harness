@@ -146,7 +146,7 @@ flowchart LR
 2. 참조가 1개 이상 발견된 경우에만 `<read-target>` 을 read (조건부 — 참조 없으면 read 불필요).
 3. 각 참조마다:
    - **존재성**: `<read-target>` 에 `## Decision <참조 식별자>` 헤더 존재하는가 (`#` 접두 포함해 그대로 대조 — 신규는 `## Decision #992`). 없으면 **P0** (`존재하지 않는 Decision`).
-   - **맥락 정합성**: 참조한 본문 단락이 해당 Decision 본문의 결정·이유·결과·트레이드오프 중 하나와 의미적으로 연결되는가. 무관하면 **P1** (`맥락 부적합 — 의도된 Decision 추정 또는 인용 제거 권장`).
+   - **맥락 정합성**: 참조한 본문 단락이 해당 Decision 본문의 결정·이유·결과 중 하나와 의미적으로 연결되는가. 무관하면 **P1** (`맥락 부적합 — 의도된 Decision 추정 또는 인용 제거 권장`).
    - **부분 연결** (Decision 본문의 부수 문장과 일치하지만 핵심과 거리감): false positive 회피 차원에서 `adr-content-mismatch` 로 잡지 않음.
 4. 다중 참조 (`Decision 2 / Decision 8` 처럼) 시 각 Decision 독립 판정. 하나라도 맥락 불일치면 어느 N 이 문제인지 명시.
 5. **검출 범위**: 각 reviewer 의 입력 도메인 안에서만 검출 (도메인 외는 분류 외로 처리).
@@ -156,7 +156,7 @@ flowchart LR
 | reviewer | read-target | 검출 도메인 |
 |---|---|---|
 | `doc-reviewer` | `docs/architecture-decisions.md` — 인용이 `harness-decisions.md` 를 파일 이름과 함께 밝혔으면 그 인용만 `docs/harness-decisions.md` (판정 규칙은 doc-reviewer 본문) | `**/*.md` 중 하네스 루트 밖 |
-| `harness-reviewer` | `docs/harness-decisions.md` + `docs/architecture-decisions.md` (양쪽) | 하네스 루트 아래 `**/*.md` |
+| `harness-reviewer` | `docs/harness-decisions.md` + `docs/architecture-decisions.md` (양쪽 — 같은 식별자가 둘 다에 있으면 doc-reviewer 본문의 표기 규칙) | 하네스 루트 아래 `**/*.md` |
 
 ---
 

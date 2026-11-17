@@ -3,7 +3,7 @@ name: harness-reviewer
 description: >-
   Claude Code 하네스 파일(agents/skills/README/required-docs) 의
   frontmatter 와 본문 정합성 + skill/agent 간 R&R 침범을 검증할 때 사용.
-  직접 호출 또는 /qa 스킬에서 하네스 .md 변경 시 호출.
+  직접 호출 또는 /qa · /plan 스킬에서 하네스 .md 변경 시 호출.
   본문 수정하지 않고 위반 사항만 보고. 입력 도메인은 본문 '## 입력 도메인' 참조.
 tools: Read, Grep, Glob, Bash
 ---
@@ -118,7 +118,7 @@ echo "$ROOTS" | while read -r r; do fd ".*\.md" "$r/agents/" "$r/skills/" -x hea
 **Decision 참조 검증 (`adr-content-mismatch`) 절차**:
 
 하네스 `README.md` § "Decision 참조 검증 (adr-content-mismatch 공통 절차)" 를 따른다.
-- read 대상 = `docs/harness-decisions.md` + `docs/architecture-decisions.md` (양쪽 — 하네스 파일이 product Decision 을 인용하는 패턴이 흔함)
+- read 대상 = `docs/harness-decisions.md` + `docs/architecture-decisions.md` (양쪽 — 하네스 파일이 product Decision 을 인용하는 패턴이 흔함). 같은 식별자가 두 파일에 다 있으면 어느 쪽에서 대조할지는 하네스 `agents/doc-reviewer.md` 의 "Decision 참조 검증 (`adr-content-mismatch`) 절차" 가 적은 표기 규칙으로 정한다.
 - 검출 도메인 = 하네스 루트 아래 `**/*.md`
 
 각 위반은 다음 정보 포함:

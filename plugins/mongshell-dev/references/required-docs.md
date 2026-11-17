@@ -238,7 +238,7 @@ frontmatter 없음 — doc-reviewer 일반 문서 skip / `adr-content-mismatch` 
 
 ## 다루지 않는 것
 
-- **영역별 `CLAUDE.md`** — 프로젝트 디렉토리 구조에 따라 가변. 작성 가이드는 [README.md](./README.md) 의 "영역별 `CLAUDE.md` 작성" 섹션.
+- **영역별 `CLAUDE.md`** — 프로젝트 디렉토리 구조에 따라 가변. 작성 안내는 SSOT 저장소 README 이식 가이드의 「영역별 `CLAUDE.md`」 단계(5번).
 - **`docs/harness-decisions.md`** — 프로젝트 로컬 결정 기록 (`docs/architecture-decisions.md` 와 동급). 하네스와 함께 배포되지 않는다 — 프로젝트마다 자기 것을 쓰고, 없어도 된다. frontmatter 없으므로 doc-reviewer 는 일반 문서로 skip. 에이전트는 `adr-content-mismatch` 대조 참조용으로만 read 한다 — harness-reviewer, 그리고 인용이 이 파일을 이름과 함께 밝힌 경우의 doc-reviewer (둘 다 본문 정합 검증 주체 아님). 스크립트도 이 파일을 다룬다 — `check-decisions-index.mjs` 가 읽고, `check-decision-versions.mjs` 가 읽고 `--write` 로 도입 줄을 채운다. 그래서 구조 계약은 `docs/architecture-decisions.md` 절과 같다.
 
 ---
@@ -256,8 +256,8 @@ frontmatter 없음 — doc-reviewer 일반 문서로 skip.
 
 ### 참조하는 agent/skill
 
-자동 로드 주체 없음 — 어떤 에이전트도 이 파일을 필수 read 하지 않음. `adr-content-mismatch` 검증 시 조건부 대조 참조용으로만 read.
+어떤 에이전트도 이 파일을 read 하지 않는다 — `adr-content-mismatch` 의 read 대상은 live 결정 파일뿐이다(하네스 `README.md` § "Decision 참조 검증 (adr-content-mismatch 공통 절차)"). 읽는 것은 스크립트다.
 
 | 위치 | 동작 |
 |------|------|
-| `harness-reviewer` agent | `adr-content-mismatch` 대조 참조 시 조건부 read |
+| `/qa` 스킬 (`check-decisions-index.mjs`) | decisions 파일 변경 시 목차 ↔ 헤더 집합 대조 |
