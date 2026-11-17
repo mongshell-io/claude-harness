@@ -52,7 +52,7 @@ fd "<테스트파일패턴>" <프로젝트소스디렉토리>
 
 **코드 표준:**
 - 기존 포맷팅 그대로 (프로젝트 포맷터 자동 처리)
-- 작고 책임 명확한 함수 — SRP. 설계 원칙은 `docs/PHILOSOPHY.md` Design Principles "SOLID" 참조 (특히 OCP/DIP 는 선제 추상화 금지)
+- 작고 책임 명확한 함수 — SRP. 설계 원칙은 `docs/PHILOSOPHY.md` Design Principles 에 "SOLID" 항목이 있으면 그 항목 참조 (특히 OCP/DIP 는 선제 추상화 금지)
 - 리팩토링/코드 작성 기준 (정직한 이름·CQS·국소성·단일 추상화 레벨 등) — `docs/code-standards.md` 준수 (루트 `CLAUDE.md` 자동 로드)
 - 의도된 예외는 표준 에러 클래스로 표현 (자세히: 영역별 `CLAUDE.md` 참조)
 - 매직 넘버 금지 — 의미 있는 named constant 로 (예: `3` 이 아니라 `const MAX_RETRIES = 3`)

@@ -13,7 +13,7 @@ origin/main 읽기 전용 태깅의 단일 진입점. git tag + GitHub Release +
 ## 언제 호출하는가
 
 - `/release vX.Y.Z` 같은 명시 호출
-- "이번 사이클 마무리하자", "milestone v0.2.0 닫자"
+- "이번 사이클 마무리하자", "milestone v0.2.0 닫자", "<테마 제목> milestone 닫자"
 - ⚠️ 자동 호출 X. 우발적 릴리스 방지를 위해 반드시 명시적으로 호출한다.
 - ⚠️ PR 머지 후에 호출하는 것이 정상 순서. release 는 origin/main 스냅샷을 태깅하므로, 미머지 변경은 이번 릴리스에 포함되지 않는다.
 
@@ -79,7 +79,7 @@ origin/main 읽기 전용 태깅의 단일 진입점. git tag + GitHub Release +
 이 식별자를 이후 모든 마일스톤 관련 명령(Step 1 이슈 목록 조회, Step 2 Changes 수집, Step 4 milestone close)에서 공통으로 사용한다.
 
 ```bash
-gh issue list --milestone <식별자> --state open --json number,title
+gh issue list --milestone "<식별자>" --state open --json number,title
 ```
 
 판정 기준:
@@ -147,7 +147,7 @@ expand/contract 규율 — 이 변경이 contract 단계가 맞습니까?
 
 GitHub Release 에 사용할 notes 문자열을 메모리상에서 조립한다.
 
-- Changes 는 `gh issue list --milestone <식별자> --state closed --json title,labels` 로 자동 수집하고 `type` 라벨(`type:feat` / `type:fix` / `type:chore` / `type:refactor`)로 그룹핑한다 (라벨 3축 정의 권위: create-issue 스킬).
+- Changes 는 `gh issue list --milestone "<식별자>" --state closed --json title,labels` 로 자동 수집하고 `type` 라벨(`type:feat` / `type:fix` / `type:chore` / `type:refactor`)로 그룹핑한다 (라벨 3축 정의 권위: create-issue 스킬).
 - 마일스톤이 없으면 Changes 절을 생략하고 요약 줄만 포함한다.
 - **도입 버전 드리프트 검사 (read-only — 스크립트)**: Decision 의 `**도입**` 라인은 **생성물**이고, 채우는 주체는 `/qa` 의 write 게이트다 (`--write` — 릴리스 다음에 오는 아무 PR 이 실어 나른다). `/release` 는 그 게이트가 돌았는지만 읽기 전용으로 확인한다.
   ```bash
@@ -222,7 +222,7 @@ git push origin vX.Y.Z
   stop 후 복구 안내:
   1. `git fetch origin main --tags` 로 최신 origin 상태와 tag 를 동기화한다.
   2. `gh release view <기존태그>` 로 다른 세션이 생성한 릴리스 내용(Changes·milestone)을 확인한다.
-  3. 내 마일스톤이 그 릴리스에 포함되지 않았으면 — 마일스톤을 다음 버전으로 이월하거나(`gh api -X PATCH repos/{owner}/{repo}/milestones/{N} -f title="<다음버전>"`) `/release` 를 다시 호출한다.
+  3. 내 마일스톤이 그 릴리스에 포함되지 않았으면 — 마일스톤을 다음 릴리스로 이월하거나(제목 관행은 프로젝트를 따른다 — 버전형 제목이면 `gh api -X PATCH repos/{owner}/{repo}/milestones/{N} -f title="<다음버전>"` 로 제목을 바꾸고, 테마형이면 그대로 둔다) `/release` 를 다시 호출한다.
 
 PONR(tag push 성공) 이후 단계(GitHub Release / milestone close)는 **멱등 best-effort** 로 진행한다: 각 단계 실패 시 STOP 하지 않고 나머지를 계속 시도한다. 실패한 명령들은 Step 5 최종 리포트에 모아 "수동 재실행하세요" 로 출력한다.
 
@@ -255,9 +255,8 @@ gh api -X PATCH repos/{owner}/{repo}/milestones/{N} -f state=closed
 > - 워크트리 동기화: release 는 더 이상 워크트리를 origin/main 과 맞춰주지 않습니다. **호출 워크트리 포함** 모든 워크트리를 수동으로 동기화하세요.
 >   - working directory 가 **clean** 이면 `git fetch && git reset --hard origin/main`
 >   - **dirty** (작업 중인 변경 있음) 면 `git fetch && git merge --ff-only origin/main`
-> - 다음 milestone 생성:
->   - **MAJOR (Y) bump**: `gh api -X POST repos/{owner}/{repo}/milestones -f title="v(X.Y+1).0"`
->   - **PROJECT (X) bump**: `gh api -X POST repos/{owner}/{repo}/milestones -f title="v(X+1).0.0"`
+> - 다음 milestone 생성 (제목 관행은 프로젝트를 따른다):
+>   - **MAJOR (Y) · PROJECT (X) bump**: `gh api -X POST repos/{owner}/{repo}/milestones -f title="<다음 milestone 제목>"` — 버전형 제목을 쓰는 프로젝트면 `v(X.Y+1).0` / `v(X+1).0.0`
 >   - **MINOR (Z) bump**: 현재 milestone 이 진행 중이므로 신규 생성 불필요
 
 ---

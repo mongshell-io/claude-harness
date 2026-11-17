@@ -2,7 +2,7 @@
 name: doc-reviewer
 description: >-
   권위 문서(.md) 의 frontmatter (role/kind/non_goals) 와 본문 정합성을 검증할 때 사용.
-  직접 호출 또는 `/qa` 스킬에서 .md 변경 시 호출.
+  직접 호출 또는 `/qa` · `/plan` 스킬에서 .md 변경 시 호출.
   본문 수정하지 않고 위반 사항만 보고.
   입력 도메인: `**/*.md` 중 하네스 루트 밖 (docs / 루트·영역별 CLAUDE.md / 기타 README).
   하네스 루트 아래 `.md` 는 harness-reviewer 영역.
@@ -17,7 +17,7 @@ tools: Read, Grep, Glob, Bash
 
 **검증 분기**: frontmatter(`---` 블록) 가 있는 파일만 권위 검증(role/kind/non_goals 정합성, cross-doc SSOT) 대상. frontmatter 가 없는 .md 는 입력 도메인에 포함되지만 본문 검증은 skip (워크플로우 2 참조).
 
-> harness Decision 인용 발견 시 도메인 경계 위반 신호 — 별도 보고.
+> `docs/harness-decisions.md` 의 Decision 을 인용한 문서도 이 도메인에서 검증한다 — 어느 결정 파일에서 대조하는지는 워크플로우 4 의 "Decision 참조 검증 절차".
 
 ## 역할
 
@@ -72,7 +72,7 @@ fd ".*\.md" docs/ -x head -n 30  # frontmatter 영역만 빠르게 스캔
 - 변경된 문서는 본문을 읽는다.
 - 비변경 권위 문서 중 본문 대조가 필요한 후보:
   - **도메인 겹침** — 변경 문서와 role / non_goals 키워드가 인접하거나 주제가 겹치는 문서. **보수적(recall 우선)** — 키워드 정확 일치가 아니어도 주제가 인접하면 포함 (ssot-duplicate / contradiction false-negative 방지).
-  - **Decision 인용 발견** — 변경 문서가 `Decision N`(legacy 순번) 또는 `Decision #N`(이슈번호) 을 인용한 경우 해당 `docs/architecture-decisions.md` read (adr-content-mismatch 절차).
+  - **Decision 인용 발견** — 변경 문서가 `Decision N`(legacy 순번) 또는 `Decision #N`(이슈번호) 을 인용한 경우 그 인용의 read 대상 결정 파일을 read (adr-content-mismatch 절차 — read 대상은 워크플로우 4).
 - release 로그 류(대량 시간순 항목 나열)는 어떤 검증 키도 본문을 활용하지 않으므로 읽지 않는다. decisions 파일은 이 제외 대상이 아니다.
 
 판단:
@@ -97,12 +97,12 @@ fd ".*\.md" docs/ -x head -n 30  # frontmatter 영역만 빠르게 스캔
 - `ssot-duplicate` — 같은 정보가 변경 문서와 다른 권위 문서에 **동일/거의 동일** 하게 나타남. SSOT 위반. 어느 쪽이 권위인지 frontmatter `role` 로 판정해 제거할 쪽 제안.
 - `declaration-mismatch` — `role` 또는 본문에서 "X 의 단일 권위" 같은 선언을 했는데 X 가 본문에 실제로 없음, 또는 owns 한다고 한 항목이 빈약함.
 - `contradiction` — 변경 문서와 다른 권위 문서가 같은 사실에 대해 서로 **모순되는 주장** (예: PHILOSOPHY 의 SaaS-first 와 architecture 의 자체 구현 권장). 인용 + 모순 지점 line 명시.
-- `adr-content-mismatch` — 본문이 특정 Decision (`Decision N` / `Decision #N` / `(Decision N 참조)` / `[Decision N](docs/architecture-decisions.md#decision-n-...)`) 을 인용했지만, `docs/architecture-decisions.md` 의 해당 Decision 본문의 결정·이유·결과 중 어느 것과도 직접 연결되지 않는 맥락에서 사용됨. 잘못된 권위 부여. (신규 결정은 이슈번호로 식별 — `Decision #N`.)
+- `adr-content-mismatch` — 본문이 특정 Decision (`Decision N` / `Decision #N` / `(Decision N 참조)` / `[Decision N](docs/architecture-decisions.md#decision-n-...)`) 을 인용했지만, read 대상 결정 파일의 해당 Decision 본문의 결정·이유·결과 중 어느 것과도 직접 연결되지 않는 맥락에서 사용됨. 잘못된 권위 부여. (신규 결정은 이슈번호로 식별 — `Decision #N`.)
 - `exception-clause-accumulation` — 단서 조항이 쌓여 권위 문서 간 SSOT / R&R 분리 / 입력 도메인 분리의 경계가 흐려지는 경우. 공통 판정 기준은 하네스 `README.md` § "예외 조항 누적 검증".
 
 **서술 통화(currency) 검증 — 권위 문서는 현재형으로만 쓴다**
 
-이력의 권위는 결정 로그(`docs/architecture-decisions.md`)와 git 이다. 나머지 권위 문서는 **지금 무엇이 참인지**만 서술한다 — 독자가 과거를 알아야 현재를 이해하는 구조는 시간이 지나면 조용히 거짓이 된다.
+이력의 권위는 결정 기록과 git 이다 — 결정 기록이 이력을 어디에 두는지(Decision 본문에 쌓는가, 지금 참인 것만 남기고 원문을 archive 로 내리는가)는 그 프로젝트 결정 문서의 머리말이 정한다. 그 밖의 권위 문서는 **지금 무엇이 참인지**만 서술한다 — 독자가 과거를 알아야 현재를 이해하는 구조는 시간이 지나면 조용히 거짓이 된다.
 
 - `stale-history` — 현재 상태를 과거와의 대비로 서술한다 (예: "예전엔 X 였지만 지금은 Y", "이제는 Y 다", "~로 바뀌었다"). 결론만 현재형으로 남기면 대비 없이 성립하는지 확인하고, 성립하면 대비를 삭제 제안한다.
   - **예외 — 부정형 가드**: "X 를 다시 도입하지 않는다 / X 는 기각됐다" 처럼 **재도입을 막기 위해** 과거를 인용하는 문장은 유지한다. 판별 기준은 "그 문장이 없으면 누군가 X 를 다시 제안하는가" 이다.
@@ -122,7 +122,9 @@ fd ".*\.md" docs/ -x head -n 30  # frontmatter 영역만 빠르게 스캔
 **Decision 참조 검증 (`adr-content-mismatch`) 절차**:
 
 하네스 `README.md` § "Decision 참조 검증 (adr-content-mismatch 공통 절차)" 를 따른다.
-- read 대상 = `docs/architecture-decisions.md`
+- read 대상 — 인용마다 표기로 정한다. `docs/architecture-decisions.md` 와 `docs/harness-decisions.md` 는 순번이 겹칠 수 있어(같은 `Decision 11` 이 두 파일에 따로 있을 수 있다) 식별자만으로는 가를 수 없다:
+  - 파일 이름 없이 `Decision N` / `Decision #N` 만 있는 인용 → `docs/architecture-decisions.md`. 거기에 그 식별자가 없는데 `docs/harness-decisions.md`(있는 프로젝트)에는 있으면 「존재하지 않는 Decision」 으로 단정하지 않는다 — 「`architecture-decisions.md` 에 없음, `harness-decisions.md` 에 있음 — 파일 이름 표기 누락 가능」 으로 보고한다 (등급은 워크플로우 5 "분류").
+  - `harness-decisions.md` 를 파일 이름과 함께 밝힌 인용 — 그 파일이 인용과 같은 링크의 대상이거나 같은 문장 안에 적힌 경우 (예: `harness-decisions.md Decision 11`, `[Decision 11](docs/harness-decisions.md#…)`) → `docs/harness-decisions.md`. 그 파일이 없는 프로젝트에서는 이 인용의 대조를 건너뛴다 (하네스 `README.md` § "권위 문서 부재 시 동작").
 - 검출 도메인 = `**/*.md` 중 하네스 루트 밖 (frontmatter 있는 권위 문서만. 일반 문서 및 harness 도메인은 적용 X)
 
 각 위반은 다음 정보 포함:
@@ -138,7 +140,7 @@ fd ".*\.md" docs/ -x head -n 30  # frontmatter 영역만 빠르게 스캔
 등급 의미는 하네스 `README.md` "공통 분류 등급" 참조. 본 reviewer 의 위반 키 → 등급 매핑:
 
 - `P0` — frontmatter 스키마 위반 / non-goals-overlap 명백한 단락 침범 / cross-authority-overlap 통째 단락 / ssot-duplicate 큰 블록 / contradiction / exception-clause-accumulation 명세 안 cross-domain 침범 예외
-- `P1` — role-violation 한두 줄 / kind-mismatch / declaration-mismatch / ssot-duplicate 짧은 문장 / exception-clause-accumulation 정책 비대칭 단서 / **stale-history** (사실이 조용히 거짓이 될 수 있는 서술) / **spent-purpose** (도입 목적이 소진된 서술)
+- `P1` — role-violation 한두 줄 / kind-mismatch / declaration-mismatch / ssot-duplicate 짧은 문장 / exception-clause-accumulation 정책 비대칭 단서 / **stale-history** (사실이 조용히 거짓이 될 수 있는 서술) / **spent-purpose** (도입 목적이 소진된 서술) / adr-content-mismatch 의 파일 이름 표기 누락 (파일 이름 없는 인용의 식별자가 `architecture-decisions.md` 에 없고 `harness-decisions.md` 에 있음 — 결정이 실재하고 고칠 것이 표기뿐이라 공통 절차의 존재성 P0 대신 P1. 두 파일 어디에도 없는 식별자는 공통 절차대로 P0)
 - `P2` — 톤·표현 보완 / **self-evident** (오도하지는 않으나 자리를 차지하는 서술 — 비자명한 사실 누락을 동반하면 P1)
 
 ### 6. 리포트

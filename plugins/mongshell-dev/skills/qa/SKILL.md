@@ -102,7 +102,7 @@ git diff $RANGE --name-only | grep -E '<ui-path-pattern>' > "$QA_TMP/ui-changed.
 | typecheck / test / lint | 코드 파일 변경 있음 | 코드 파일 변경 있음 | — |
 | build | **제외** | 코드 파일 변경 있음 | `--build` 지정 시 |
 | **schema 정합성** | **DB schema 경로 변경 있음** | **DB schema 경로 변경 있음** | — | <!-- ERD 산출물 검사: <db-erd-cmd> 실패 시 P0. 규약 권위: DB 영역 CLAUDE.md -->
-| **decisions 인덱스 정합** | **decisions 파일(`architecture-decisions.md` / `harness-decisions.md` / `decisions-archive.md`) 변경 있음** | **동일** | — |
+| **decisions 인덱스 정합** | **decisions 파일(`architecture-decisions.md` / `harness-decisions.md` / `decisions-archive.md` / `harness-decisions-archive.md`) 변경 있음** | **동일** | — |
 | **decisions 도입 버전 확정** | **결정 문서 존재 시 항상** (변경 여부 무관) | **동일** | — | <!-- Step 2 에서 자동 write. 조건이 "변경 있음" 이 아닌 이유는 아래 항목 참조 -->
 | **harness-core 마커 정합** | **루트 `CLAUDE.md` 에 마커 존재 시 항상** (변경 여부 무관) | **동일** | — | <!-- 정본이 바뀌면 내 diff 와 무관하게 낡는다 -->
 | code-reviewer | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | — |
@@ -172,7 +172,7 @@ QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 # ( <db-generate-cmd> && git status --porcelain <migration-dir>/ ; \
 #   <db-erd-cmd> && git status --porcelain <erd-output-paths> ) > "$QA_TMP/schema.txt" 2>&1 &
 # (구체 명령·경로 권위: DB 영역 CLAUDE.md — db-generate-cmd / migration-dir / db-erd-cmd / ERD 산출물)
-# decisions 인덱스 정합: decisions 파일(architecture-decisions / harness-decisions / decisions-archive) 변경 시에만 실행
+# decisions 인덱스 정합: decisions 파일(architecture-decisions / harness-decisions / decisions-archive / harness-decisions-archive) 변경 시에만 실행
 # 결정적(deterministic) 판정은 모델 추론이 아니라 스크립트로 처리한다 (스크립트 우선 원칙).
 # 헤더 식별자 집합 vs 상태 인덱스/목차 집합을 대조해 MISSING(헤더에만)/DANGLING(인덱스에만)/중복/NO_SECTION 을 검출한다 —
 # 개수만 비교하던 이전 방식이 놓치던 "한쪽 누락 + 반대쪽 오타" 상쇄 케이스까지 잡는다. 불일치 시 exit 1.
@@ -345,11 +345,15 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 # marker 는 의도적으로 $QA_TMP 밖 고정 경로 — /pr Step 0 이 세션 무관하게 읽는 계약(존재 = 통과). 경로 변경 금지.
 # 내용은 발견 요약 — /pr Step 2 가 PR 본문 "QA 발견 요약" 절에 그대로 붙인다. 리포트에서 개수·미해결 P1·Pre-existing 만 옮긴다.
 MARKER="/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)"
-# 위험 경로: 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 항목(마이그레이션·요청 경로·CI 워크플로)에 닿는 변경 파일.
+# 위험 경로: 루트 CLAUDE.md 작업 규약 코어가 High 로 정한 경로에 닿는 변경 파일.
 # /pr 은 로컬 base 비교를 하지 않으므로(그 스킬의 제약) RANGE 를 이미 가진 여기서 계산해 marker 에 남긴다.
-# 실행 전 두 자리표시자를 권위 문서 값으로 치환한다 — <migration-dir> 는 DB 영역 CLAUDE.md(없는 프로젝트는 루트 CLAUDE.md 스택 메모),
-# <request-path-file> 은 루트 CLAUDE.md 스택 메모 (프로젝트 종속값 — 본문에 미기재). 미치환 상태로 돌면 regex 가 .github/ 외엔 못 잡아 Low 를 제안하는 fail-open 이
-# 되므로, '<' 가 남아 있으면 marker 를 기록하지 않고 stop 한다.
+# 패턴은 세션이 실행 전에 정하고, 판정(변경 파일을 패턴에 대는 것)은 아래 bash 가 한다:
+#   (1) 루트 CLAUDE.md 작업 규약 코어 "정책 노브" 가 High 경로 집합을 구체 경로로 나열하고 있으면 — 괄호 안 전체를 그 집합으로 바꾼다.
+#       나열된 경로마다 갈래 하나: 나열이 `/` 로 끝나면 디렉토리(`<경로>/`), 아니면 파일(`<경로>$`). 경로 안의 정규식 메타문자(`.` `(` `)` `[` `]` `+` `*` `?` 등)는
+#       앞에 `\` 를 붙여 글자 그대로 맞게 하고, 갈래를 `|` 로 잇는다. 나열된 경로를 하나도 빠뜨리지 않는다.
+#   (2) 정책 노브에 나열이 없으면("위험 등급" 줄의 `.github/` 는 나열로 치지 않는다) — 아래 기본값(코어 "위험 등급" 의 CI 워크플로·마이그레이션·요청 경로 갈래)의 자리표시자만 권위 문서 값으로 치환한다.
+#       <migration-dir> 는 DB 영역 CLAUDE.md(없는 프로젝트는 루트 CLAUDE.md 스택 메모), <request-path-file> 은 루트 CLAUDE.md 스택 메모 (프로젝트 종속값 — 본문에 미기재).
+# 미치환 상태로 돌면 regex 가 .github/ 외엔 못 잡아 Low 를 제안하는 fail-open 이 되므로, '<' 가 남아 있으면 marker 를 기록하지 않고 stop 한다.
 RISKY_PATTERN='^(\.github/|<migration-dir>/|<request-path-file>$)'
 case "$RISKY_PATTERN" in *'<'*) echo "위험 경로 패턴 미치환 — marker 기록 중단 (권위 문서 값으로 치환 후 재실행)"; exit 1;; esac
 RISKY=$(git diff --name-only $RANGE | grep -E "$RISKY_PATTERN" | tr '\n' ' ')
@@ -360,11 +364,13 @@ RISKY=$(git diff --name-only $RANGE | grep -E "$RISKY_PATTERN" | tr '\n' ' ')
 - Pre-existing: <file:line — 한 줄. 없으면 "없음">
 EOF
 printf -- '- 위험 경로: %s\n' "${RISKY:-없음}"; } > "$MARKER"
+# 실제 쓴 패턴을 찍는다 — 나열된 경로를 빠뜨렸을 때 사람이 볼 수 있게 (아래 사용자 안내에 그대로 싣는다).
+printf '위험 경로 패턴: %s\n' "$RISKY_PATTERN"
 ```
 
 (`<…>` 자리만 Step 5 리포트의 **발견** 줄과 findings 에서 옮겨 채운다. 발견 0건이면 첫 줄은 "발견 0건 — 고칠 것 없음". 위험 경로 줄은 셸이 채운다 — 손으로 쓰지 않는다. 위험 경로가 있으면 /pr 이 Risk 를 High 로 제안한다.)
 
-한 줄 안내(사용자 출력): "QA 통과 marker 기록 — /pr Step 0 게이트 + Step 2 'QA 발견 요약' 에서 사용됨"
+한 줄 안내(사용자 출력): "QA 통과 marker 기록 — /pr Step 0 게이트 + Step 2 'QA 발견 요약' 에서 사용됨. 위험 경로 패턴: <블록이 찍은 RISKY_PATTERN>"
 
 - 기본(uncommitted) 호출은 부분 검증이라 PR 범위를 보증하지 못하므로 marker 를 기록하지 않는다.
 
