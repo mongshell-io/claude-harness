@@ -345,11 +345,14 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 # marker 는 의도적으로 $QA_TMP 밖 고정 경로 — /pr Step 0 이 세션 무관하게 읽는 계약(존재 = 통과). 경로 변경 금지.
 # 내용은 발견 요약 — /pr Step 2 가 PR 본문 "QA 발견 요약" 절에 그대로 붙인다. 리포트에서 개수·미해결 P1·Pre-existing 만 옮긴다.
 MARKER="/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)"
-# 위험 경로: 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 항목(마이그레이션·요청 경로·CI 워크플로)에 닿는 변경 파일.
+# 위험 경로: 루트 CLAUDE.md 작업 규약 코어가 High 로 정한 경로에 닿는 변경 파일.
 # /pr 은 로컬 base 비교를 하지 않으므로(그 스킬의 제약) RANGE 를 이미 가진 여기서 계산해 marker 에 남긴다.
-# 실행 전 두 자리표시자를 권위 문서 값으로 치환한다 — <migration-dir> 는 DB 영역 CLAUDE.md(없는 프로젝트는 루트 CLAUDE.md 스택 메모),
-# <request-path-file> 은 루트 CLAUDE.md 스택 메모 (프로젝트 종속값 — 본문에 미기재). 미치환 상태로 돌면 regex 가 .github/ 외엔 못 잡아 Low 를 제안하는 fail-open 이
-# 되므로, '<' 가 남아 있으면 marker 를 기록하지 않고 stop 한다.
+# 패턴은 세션이 실행 전에 정하고, 판정(변경 파일을 패턴에 대는 것)은 아래 bash 가 한다:
+#   (1) 루트 CLAUDE.md 작업 규약 코어 "위험 등급" · "정책 노브" 가 High 경로 집합을 구체 경로로 나열하고 있으면 — 괄호 안 전체를 그 집합으로 바꾼다.
+#       디렉토리는 `<경로>/`, 파일은 `<경로>$`, 정규식 메타문자 `.` 는 `\.` 로 옮겨 `|` 로 잇고, 나열된 경로를 하나도 빠뜨리지 않는다.
+#   (2) 나열이 없으면 — 아래 기본값(코어 "위험 등급" 의 세 갈래: CI 워크플로·마이그레이션·요청 경로)의 두 자리표시자만 권위 문서 값으로 치환한다.
+#       <migration-dir> 는 DB 영역 CLAUDE.md(없는 프로젝트는 루트 CLAUDE.md 스택 메모), <request-path-file> 은 루트 CLAUDE.md 스택 메모 (프로젝트 종속값 — 본문에 미기재).
+# 미치환 상태로 돌면 regex 가 .github/ 외엔 못 잡아 Low 를 제안하는 fail-open 이 되므로, '<' 가 남아 있으면 marker 를 기록하지 않고 stop 한다.
 RISKY_PATTERN='^(\.github/|<migration-dir>/|<request-path-file>$)'
 case "$RISKY_PATTERN" in *'<'*) echo "위험 경로 패턴 미치환 — marker 기록 중단 (권위 문서 값으로 치환 후 재실행)"; exit 1;; esac
 RISKY=$(git diff --name-only $RANGE | grep -E "$RISKY_PATTERN" | tr '\n' ' ')

@@ -99,7 +99,7 @@ QA_SUMMARY=$(cat "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)"
 
 ## Risk
 <Low / Medium / High> — <한 줄 이유. $QA_SUMMARY 의 "위험 경로" 가 "없음" 이 아니면 High 로 제안하고 그 경로를 적는다.
-High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). High 조건만 루트 CLAUDE.md 작업 규약 코어 "위험 등급" 이 정의한다 —
+High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). High 조건만 루트 CLAUDE.md 작업 규약 코어("위험 등급" — 프로젝트가 High 경로 집합을 나열했으면 그 집합)가 정의한다 —
 Low/Medium 은 사용자 판단(기본 제안 Low)>
 
 ## How to revert
@@ -122,7 +122,7 @@ QA marker 부재 상태에서 사용자가 미리 skip 을 지시해 진행한 �
 같은 경우 "Risk" 절의 등급 자리에는 다음 라인을 넣는다 — `/pr` 은 변경 파일을 계산하지 않으므로(아래 로컬 base 비교 금지) 위험 경로를 산출할 주체가 없고, 판정은 사용자 몫이다:
 
 ```
-> ⚠️ QA marker 없음 — 위험 경로 미산출. 변경 파일(마이그레이션·요청 경로·CI 워크플로) 기준으로 직접 판정
+> ⚠️ QA marker 없음 — 위험 경로 미산출. 변경 파일이 루트 CLAUDE.md 작업 규약 코어의 High 조건에 닿는지 직접 판정
 ```
 
 초안을 보여주고 기다리지 않는다 — 바로 Step 3 으로 가서 PR 을 만든다. 사용자가 고칠 점을 말하면 `gh pr edit` 로 반영한다.
