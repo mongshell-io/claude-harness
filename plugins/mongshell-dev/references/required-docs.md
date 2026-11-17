@@ -251,6 +251,7 @@ frontmatter 없음 — doc-reviewer 일반 문서로 skip.
 
 - `architecture-decisions.md` 에서 내린 Decision 원문을 무수정 보존 — 무엇을 내리는지(번복·대체된 Decision 만인가, 고쳐 쓰기 전 본문도인가)는 live 파일 머리말이 권위. `## Decision N: <제목>` 헤더 형식(콜론 + 제목 필수, 레거시 순번 또는 `#이슈` 식별자 — live 파일과 동일 계약) 유지.
 - **`## 목차` 표** — 보관된 Decision 의 네비게이션 인덱스(TOC). 상태·supersede 권위가 아니라(그건 live 파일 `상태 인덱스`) 네비게이션용. `${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs` 가 목차 ↔ 헤더 집합 대조로 검증.
+- **`docs/harness-decisions-archive.md`** (선택) — `harness-decisions.md` 의 원문을 따로 보관하는 프로젝트의 파일(두 live 파일의 순번이 겹쳐 한 archive 에 섞을 수 없을 때). 계약은 위 두 항목과 같고, 같은 스크립트가 파일이 있으면 똑같이 검사한다.
 
 ### 참조하는 agent/skill
 

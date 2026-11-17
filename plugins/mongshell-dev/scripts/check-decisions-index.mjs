@@ -35,10 +35,14 @@ const ROOT = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "
 
 // 파일별로 "인덱스 표를 여는 섹션 헤더"가 다르다: live 로그는 `## 상태 인덱스`(active/superseded 권위),
 // archive 는 `## 목차`(네비게이션 TOC — 상태 권위 아님).
+// 넷 다 선택 대상이다 — 있는 파일만 검사한다 (하나도 없으면 아래에서 루트 해석 실패로 본다).
+// harness-decisions-archive 는 harness-decisions 의 원문을 따로 보관하는 프로젝트에만 있다
+// (두 live 파일의 순번이 겹쳐 decisions-archive 한 파일에 섞을 수 없을 때).
 const FILES = [
 	{ path: "docs/architecture-decisions.md", section: "상태 인덱스" },
 	{ path: "docs/harness-decisions.md", section: "상태 인덱스" },
 	{ path: "docs/decisions-archive.md", section: "목차" },
+	{ path: "docs/harness-decisions-archive.md", section: "목차" },
 ];
 
 const HEADER_RE = /^## Decision (#?\d+(?:-\d+)?):/; // `## Decision 76:` / `## Decision #992:` / `## Decision 6-1:`

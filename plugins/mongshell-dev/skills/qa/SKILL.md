@@ -102,7 +102,7 @@ git diff $RANGE --name-only | grep -E '<ui-path-pattern>' > "$QA_TMP/ui-changed.
 | typecheck / test / lint | 코드 파일 변경 있음 | 코드 파일 변경 있음 | — |
 | build | **제외** | 코드 파일 변경 있음 | `--build` 지정 시 |
 | **schema 정합성** | **DB schema 경로 변경 있음** | **DB schema 경로 변경 있음** | — | <!-- ERD 산출물 검사: <db-erd-cmd> 실패 시 P0. 규약 권위: DB 영역 CLAUDE.md -->
-| **decisions 인덱스 정합** | **decisions 파일(`architecture-decisions.md` / `harness-decisions.md` / `decisions-archive.md`) 변경 있음** | **동일** | — |
+| **decisions 인덱스 정합** | **decisions 파일(`architecture-decisions.md` / `harness-decisions.md` / `decisions-archive.md` / `harness-decisions-archive.md`) 변경 있음** | **동일** | — |
 | **decisions 도입 버전 확정** | **결정 문서 존재 시 항상** (변경 여부 무관) | **동일** | — | <!-- Step 2 에서 자동 write. 조건이 "변경 있음" 이 아닌 이유는 아래 항목 참조 -->
 | **harness-core 마커 정합** | **루트 `CLAUDE.md` 에 마커 존재 시 항상** (변경 여부 무관) | **동일** | — | <!-- 정본이 바뀌면 내 diff 와 무관하게 낡는다 -->
 | code-reviewer | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | — |
@@ -172,7 +172,7 @@ QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 # ( <db-generate-cmd> && git status --porcelain <migration-dir>/ ; \
 #   <db-erd-cmd> && git status --porcelain <erd-output-paths> ) > "$QA_TMP/schema.txt" 2>&1 &
 # (구체 명령·경로 권위: DB 영역 CLAUDE.md — db-generate-cmd / migration-dir / db-erd-cmd / ERD 산출물)
-# decisions 인덱스 정합: decisions 파일(architecture-decisions / harness-decisions / decisions-archive) 변경 시에만 실행
+# decisions 인덱스 정합: decisions 파일(architecture-decisions / harness-decisions / decisions-archive / harness-decisions-archive) 변경 시에만 실행
 # 결정적(deterministic) 판정은 모델 추론이 아니라 스크립트로 처리한다 (스크립트 우선 원칙).
 # 헤더 식별자 집합 vs 상태 인덱스/목차 집합을 대조해 MISSING(헤더에만)/DANGLING(인덱스에만)/중복/NO_SECTION 을 검출한다 —
 # 개수만 비교하던 이전 방식이 놓치던 "한쪽 누락 + 반대쪽 오타" 상쇄 케이스까지 잡는다. 불일치 시 exit 1.
