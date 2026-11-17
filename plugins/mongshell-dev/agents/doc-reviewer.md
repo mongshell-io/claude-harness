@@ -123,7 +123,7 @@ fd ".*\.md" docs/ -x head -n 30  # frontmatter 영역만 빠르게 스캔
 
 하네스 `README.md` § "Decision 참조 검증 (adr-content-mismatch 공통 절차)" 를 따른다.
 - read 대상 — 인용마다 표기로 정한다. `docs/architecture-decisions.md` 와 `docs/harness-decisions.md` 는 순번이 겹칠 수 있어(같은 `Decision 11` 이 두 파일에 따로 있을 수 있다) 식별자만으로는 가를 수 없다:
-  - 파일 이름 없이 `Decision N` / `Decision #N` 만 있는 인용 → `docs/architecture-decisions.md`. 거기에 그 식별자가 없는데 `docs/harness-decisions.md`(있는 프로젝트)에는 있으면 「존재하지 않는 Decision」 으로 단정하지 않는다 — 「`architecture-decisions.md` 에 없음, `harness-decisions.md` 에 있음 — 파일 이름 표기 누락 가능」 으로 보고한다.
+  - 파일 이름 없이 `Decision N` / `Decision #N` 만 있는 인용 → `docs/architecture-decisions.md`. 거기에 그 식별자가 없는데 `docs/harness-decisions.md`(있는 프로젝트)에는 있으면 「존재하지 않는 Decision」 으로 단정하지 않는다 — 「`architecture-decisions.md` 에 없음, `harness-decisions.md` 에 있음 — 파일 이름 표기 누락 가능」 으로 보고한다 (등급은 워크플로우 5 "분류").
   - `harness-decisions.md` 를 파일 이름과 함께 밝힌 인용 — 그 파일이 인용과 같은 링크의 대상이거나 같은 문장 안에 적힌 경우 (예: `harness-decisions.md Decision 11`, `[Decision 11](docs/harness-decisions.md#…)`) → `docs/harness-decisions.md`. 그 파일이 없는 프로젝트에서는 이 인용의 대조를 건너뛴다 (하네스 `README.md` § "권위 문서 부재 시 동작").
 - 검출 도메인 = `**/*.md` 중 하네스 루트 밖 (frontmatter 있는 권위 문서만. 일반 문서 및 harness 도메인은 적용 X)
 
@@ -140,7 +140,7 @@ fd ".*\.md" docs/ -x head -n 30  # frontmatter 영역만 빠르게 스캔
 등급 의미는 하네스 `README.md` "공통 분류 등급" 참조. 본 reviewer 의 위반 키 → 등급 매핑:
 
 - `P0` — frontmatter 스키마 위반 / non-goals-overlap 명백한 단락 침범 / cross-authority-overlap 통째 단락 / ssot-duplicate 큰 블록 / contradiction / exception-clause-accumulation 명세 안 cross-domain 침범 예외
-- `P1` — role-violation 한두 줄 / kind-mismatch / declaration-mismatch / ssot-duplicate 짧은 문장 / exception-clause-accumulation 정책 비대칭 단서 / **stale-history** (사실이 조용히 거짓이 될 수 있는 서술) / **spent-purpose** (도입 목적이 소진된 서술)
+- `P1` — role-violation 한두 줄 / kind-mismatch / declaration-mismatch / ssot-duplicate 짧은 문장 / exception-clause-accumulation 정책 비대칭 단서 / **stale-history** (사실이 조용히 거짓이 될 수 있는 서술) / **spent-purpose** (도입 목적이 소진된 서술) / adr-content-mismatch 의 파일 이름 표기 누락 (파일 이름 없는 인용의 식별자가 `architecture-decisions.md` 에 없고 `harness-decisions.md` 에 있음 — 결정이 실재하고 고칠 것이 표기뿐이라 공통 절차의 존재성 P0 대신 P1. 두 파일 어디에도 없는 식별자는 공통 절차대로 P0)
 - `P2` — 톤·표현 보완 / **self-evident** (오도하지는 않으나 자리를 차지하는 서술 — 비자명한 사실 누락을 동반하면 P1)
 
 ### 6. 리포트
