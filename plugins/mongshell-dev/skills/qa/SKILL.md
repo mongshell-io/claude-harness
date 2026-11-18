@@ -333,7 +333,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - Decision 도입 버전: ✅ 확정할 것 없음 / 🔧 N건 자동 확정 — 이번 커밋에 포함하세요 (`파일:line → vX.Y.Z` 목록) / ⏭️ 결정 문서 없음 — 스킵
 - browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
 - `code-reviewer`: ✅ 완료 / ⏭️ `--skip-code-review` 사용자 명시 스킵
-- REVIEW.md 트리거: R2 · R5 / 없음 / 해당 없음 (code-reviewer 결과 그대로 — `references/review-checklist.md`)
+- REVIEW.md 트리거: C1 · R2 · R5 / 없음 / 해당 없음 (파일 없음) / 해당 없음 (origin/main ref 없음) / ⏭️ code-reviewer 미호출 — 스킵 (code-reviewer 결과 그대로, fetch 실패 문구가 있으면 덧붙임 — `references/review-checklist.md`)
 - `security-reviewer`: ✅ 완료 / ⏭️ 단발 기본 — 스킵 / ⏭️ 코드 변경 없음 — 스킵
 - 외부 LLM: 지정했을 때만 도구별 한 줄 (표기는 `references/external-llm-review.md` "결과 분류")
 - `doc-reviewer`: ✅ 완료 / ⏭️ doc 도메인 변경 없음 — 스킵

@@ -62,20 +62,23 @@ grep 에서 결과가 나오면 P1 후보 — 의도된 것인지 확인 후 분
 - 영역별 `CLAUDE.md` 는 작업 시점에 자동 로드됩니다
 - 영역 인덱스가 필요하면 루트 `CLAUDE.md` Sub-Documents 섹션 참조
 
-### 2.5. 리뷰 체크리스트 (`REVIEW.md` — 있는 프로젝트만)
+### 2.5. 리뷰 체크리스트 (공통 항목 + 프로젝트 `REVIEW.md`)
 
-형식 · 읽는 법 · 공통 항목의 권위는 `${CLAUDE_PLUGIN_ROOT}/references/review-checklist.md`. 프로젝트 항목은 **기준 브랜치의 판**(`origin/main` 고정 — PR base 와 무관)으로 읽는다:
+형식 · 읽는 법 · 공통 항목(`C` 번호)의 권위는 `${CLAUDE_PLUGIN_ROOT}/references/review-checklist.md` — 공통 항목은 프로젝트 파일이 없어도 검사한다. 프로젝트 항목은 **기준 브랜치의 판**(`origin/main` 고정 — PR base 와 무관)으로 읽는다:
 
 ```bash
-git fetch origin main --quiet 2>/dev/null || true   # 직전에 머지된 항목이 빠지지 않게
-if ! git rev-parse --verify --quiet origin/main >/dev/null; then echo "(origin/main ref 없음 — 프로젝트 항목 건너뜀)"
-else git show origin/main:REVIEW.md 2>/dev/null || echo "(기준 브랜치에 REVIEW.md 없음 — 프로젝트 항목 건너뜀)"; fi
+# 직전에 머지된 항목이 빠지지 않게 fetch — 비대화형(인증 프롬프트에서 멈추지 않게)
+GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND='ssh -o BatchMode=yes' git fetch origin main --quiet 2>/dev/null \
+  || echo "(fetch 실패 — 로컬 origin/main 판으로 검사)"
+if ! git rev-parse --verify --quiet origin/main >/dev/null; then echo "(해당 없음 (origin/main ref 없음) — 프로젝트 항목 건너뜀)"
+else git show origin/main:REVIEW.md 2>/dev/null || echo "(해당 없음 (파일 없음) — 프로젝트 항목 건너뜀)"; fi
 ```
 
 - 작업 트리 · PR 브랜치의 `REVIEW.md` 를 읽지 않는다 — 검사받는 변경이 검사 규칙을 고쳐 스스로를 통과시키지 못하게. 이번 변경이 `REVIEW.md` 를 고쳤어도 기준 브랜치 판으로 검사한다.
-- 1단계 변경분 중 **이 에이전트 입력 도메인의 파일**(코드 파일 — `.md` 제외)과 그 diff 만 공통 항목 · 프로젝트 항목의 **트리거**에 대고, 맞는 항목만 그 **검사**를 수행한다. 모든 항목을 습관적으로 훑지 않는다.
+- 1단계 변경분 중 **이 에이전트 입력 도메인의 파일**(`${CLAUDE_PLUGIN_ROOT}/README.md` "Reviewer 라우팅" 의 코드 도메인)과 그 diff 만 공통 항목 · 프로젝트 항목의 **트리거**에 대고, 맞는 항목만 그 **검사**를 수행한다. 모든 항목을 습관적으로 훑지 않는다.
 - 위반은 3단계 findings 와 같은 등급으로 올리고 항목 번호를 붙인다.
-- 트리거가 `.md` 경로에만 걸리는 항목은 검사하지 않는다 — 문서는 이 에이전트의 입력 도메인이 아니다(README "Reviewer 라우팅").
+- 트리거가 코드 도메인 밖 경로에만 걸리는 항목은 검사하지 않는다(README "Reviewer 라우팅").
+- 위 블록이 「fetch 실패」를 찍었으면 그 문구를 리포트 체크리스트 절에 그대로 남긴다.
 
 ### 3. 코드 리뷰
 
@@ -124,7 +127,7 @@ else git show origin/main:REVIEW.md 2>/dev/null || echo "(기준 브랜치에 RE
 [변경 사항 한눈에]
 
 ## 체크리스트 (REVIEW.md)
-트리거된 항목: R2 · R5 (없으면 「없음」, 파일이 없으면 「해당 없음」)
+트리거된 항목: C1 · R2 · R5 (없으면 「없음」. 프로젝트 항목을 못 읽었으면 「해당 없음 (파일 없음)」 / 「해당 없음 (origin/main ref 없음)」 — 공통 항목 판정은 그대로 적는다. fetch 가 실패했으면 「(fetch 실패 — 로컬 origin/main 판으로 검사)」를 덧붙인다)
 
 ## 변경 파일
 - **API**: [files]
