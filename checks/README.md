@@ -21,7 +21,7 @@ mongshell-io 앱 저장소가 같이 쓰는 결정적 검사(`check:*`)입니다
 ```jsonc
 // 앱 package.json
 "scripts": {
-  "check": "mongshell-check all",               // check:* 전수 (이름이 check:all 이면 자기 호출이라 거부한다)
+  "check": "mongshell-check all",               // check:* 전수 — 이름은 check (check:* 가 아님, 아래 「중첩 실행」)
   "check:journal": "mongshell-check journal",
   "check:doc-symbols": "mongshell-check doc-symbols"
 }
@@ -48,6 +48,8 @@ mongshell-io 앱 저장소가 같이 쓰는 결정적 검사(`check:*`)입니다
 - 종료 코드: 0 통과 · 1 위반 또는 설정 오류 · 2 사용법 오류.
 
 `mongshell-check all [--jobs N]` 은 package.json 의 `check:*` 를 **공용 · 저장소 로컬 구분 없이 전부** 4개(기본)씩 병렬로 돌리고, 출력을 스크립트별로 모아 순서대로 찍은 뒤 실패 목록을 보고합니다(GitHub Actions 에서는 `::group::` 으로 접음). 전제: `check:*` 는 전부 자족적입니다(네트워크 · 자격증명 · DB 없이 돈다).
+
+중첩 실행: `all` 은 자식 스크립트 환경에 `MONGSHELL_CHECK_ALL=1` 을 넣고, 시작할 때 이 값이 이미 있으면 exit 1 로 거부합니다 — 어떤 `check:*` 가 (다른 스크립트를 거쳐서라도) `mongshell-check all` 에 닿으면 끝없는 재귀 대신 바로 실패합니다. `check:*` 본문이 `mongshell-check all` 을 바로 부르면 실행 전에 그 이름을 알려 주고 실패합니다. 단일 검사는 인자를 받지 않고(값은 설정 파일), `all` 은 `--jobs N` 만 받습니다 — 그 밖의 인자는 exit 2.
 
 ## 검사
 

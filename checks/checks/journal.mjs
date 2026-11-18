@@ -75,7 +75,15 @@ export function run({ root, options }) {
 		return 1;
 	}
 
-	const entries = [...(journal.entries ?? [])].sort((a, b) => a.idx - b.idx);
+	const rawEntries = journal.entries ?? [];
+	// idx · when 이 정수가 아니면 정렬 · 비교가 NaN 으로 조용히 통과한다(`undefined <= x` 는 false) — 형식부터 막는다.
+	const malformed = rawEntries.filter((e) => !Number.isInteger(e?.idx) || !Number.isInteger(e?.when) || typeof e?.tag !== "string");
+	if (malformed.length > 0) {
+		console.error(`[check-journal-monotonic] idx · when(정수) · tag(문자열) 형식이 틀린 entry ${malformed.length}건: ${journalPath}`);
+		for (const e of malformed) console.error(`  ${JSON.stringify(e)}`);
+		return 1;
+	}
+	const entries = [...rawEntries].sort((a, b) => a.idx - b.idx);
 	// 정상 journal 은 최소 baseline 1개를 가진다 — 비면 침묵 통과(fail-open) 대신 실패한다.
 	if (entries.length === 0) {
 		console.error(`[check-journal-monotonic] entries 가 비어있습니다 — journal 파일이 비정상입니다: ${journalPath}`);

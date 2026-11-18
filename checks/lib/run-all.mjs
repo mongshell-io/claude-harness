@@ -8,6 +8,10 @@
  * - 출력은 스크립트별로 모아 두었다가 끝난 뒤 순서대로 찍는다 — 동시 출력이 섞이지 않게. GitHub Actions 에서는 그룹으로 접는다.
  * - 하나가 실패해도 끝까지 돌고 마지막에 실패 목록을 모아 보고한다.
  *
+ * 중첩 실행 차단: 자식 스크립트 환경에 `MONGSHELL_CHECK_ALL=1` 을 넣고, 시작할 때 이미 있으면 거부한다. 어떤 `check:*` 가
+ * 감싸는 스크립트 · 다른 이름을 거쳐 `mongshell-check all` 에 닿아도 끝없는 재귀 대신 즉시 실패한다. 아래 정규식 검사는
+ * 바로 부르는 경우를 실행 전에 이름으로 알려 주는 안내일 뿐이다.
+ *
  * 전제: `check:*` 는 전부 자족적이다(네트워크·자격증명·DB 없이 돈다). 외부 호출이 필요한 검사는 이름을 `check:` 로
  * 시작하지 않게 한다.
  */
@@ -16,7 +20,10 @@ import { spawn } from "node:child_process";
 
 export const DEFAULT_JOBS = 4;
 
-/** 이 실행기 자신을 부르는 스크립트 — 전수 실행에 넣으면 끝없이 자기를 부른다. */
+/** 전수 실행 중임을 자식 프로세스에 알리는 환경변수 — 중첩 실행 차단용. */
+export const NESTED_ENV = "MONGSHELL_CHECK_ALL";
+
+/** 이 실행기를 바로 부르는 스크립트 — 실행 전에 이름으로 알려 주는 안내용(차단의 권위는 NESTED_ENV). */
 const SELF_INVOCATION = /(^|[\s;&|])mongshell-check\s+all(\s|$)/;
 
 /**
@@ -32,7 +39,11 @@ export function selectCheckScripts(scripts) {
 function runScript(script, root) {
 	return new Promise((done) => {
 		const chunks = [];
-		const child = spawn("pnpm", ["run", script], { cwd: root, env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+		const child = spawn("pnpm", ["run", script], {
+			cwd: root,
+			env: { ...process.env, [NESTED_ENV]: "1" },
+			stdio: ["ignore", "pipe", "pipe"],
+		});
 		child.stdout.on("data", (c) => chunks.push(c));
 		child.stderr.on("data", (c) => chunks.push(c));
 		child.on("error", (err) => done({ script, ok: false, log: `실행하지 못했습니다: ${err.message}\n` }));
@@ -55,6 +66,12 @@ export async function runPool(items, jobs, worker) {
 }
 
 export async function runAll({ root, pkg, jobs = DEFAULT_JOBS }) {
+	if (process.env[NESTED_ENV]) {
+		console.error(
+			`mongshell-check all: 중첩 실행 — 전수 실행 중인 check:* 스크립트가 다시 mongshell-check all 을 불렀습니다(${NESTED_ENV} 설정됨). 그 스크립트가 all 을 부르지 않게 고치세요.`,
+		);
+		return 1;
+	}
 	const { names, recursive } = selectCheckScripts(pkg.scripts ?? {});
 	if (recursive.length > 0) {
 		console.error(

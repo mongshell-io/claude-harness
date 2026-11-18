@@ -31,6 +31,14 @@ describe("resolveOptions — fail-closed", () => {
 		assert.throws(() => resolveOptions("x", SCHEMA, { need: "y", pth: "z" }), /모르는 키 "pth"/);
 	});
 
+	it("Object 프로토타입 이름(toString · constructor)도 모르는 키다", () => {
+		assert.throws(() => resolveOptions("x", SCHEMA, { need: "y", toString: "z" }), /모르는 키 "toString"/);
+		assert.throws(
+			() => resolveOptions("x", SCHEMA, { need: "y", allowed: [{ idx: 1, why: "w", constructor: "c" }] }),
+			/모르는 키 "constructor"/,
+		);
+	});
+
 	it("필수 키가 없으면 실패한다", () => {
 		assert.throws(() => resolveOptions("x", SCHEMA, {}), /need 가 필요합니다/);
 	});

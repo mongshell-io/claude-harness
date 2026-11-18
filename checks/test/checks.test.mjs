@@ -56,6 +56,14 @@ describe("journal", () => {
 		assert.equal(runCheck(t, "journal", journalFiles([])).code, 1);
 	});
 
+	it("idx · when 이 정수가 아니면 실패 (NaN 비교로 조용히 통과하지 않게)", (t) => {
+		for (const bad of [{ idx: 1, tag: "0001_m" }, { idx: "1", tag: "0001_m", when: 5 }, { idx: 1, tag: "0001_m", when: 1.5 }]) {
+			const { code, out } = runCheck(t, "journal", journalFiles([e(0, 1), bad]));
+			assert.equal(code, 1, JSON.stringify(bad));
+			assert.match(out, /형식이 틀린 entry 1건/);
+		}
+	});
+
 	it("journalPath 설정을 따른다", (t) => {
 		const files = { "db/migrations/meta/_journal.json": { entries: [e(0, 1)] }, "db/migrations/0000_m.sql": "" };
 		assert.equal(runCheck(t, "journal", files, { journalPath: "db/migrations/meta/_journal.json" }).code, 0);
@@ -84,6 +92,13 @@ describe("design-tokens", () => {
 
 	it("검사할 파일이 0개면 실패 (공회전)", (t) => {
 		assert.equal(runCheck(t, "design-tokens", { "src/styles/design-tokens.css": css }).code, 1);
+	});
+
+	it("prefix 로 시작하는 정의 토큰이 0개면 실패 (prefix 오타로 검사 범위가 비지 않게)", (t) => {
+		const files = { "src/styles/design-tokens.css": css, "src/a.tsx": '<div className="bg-ap-nope" />' };
+		const { code, out } = runCheck(t, "design-tokens", files, { prefix: "ap-" });
+		assert.equal(code, 1);
+		assert.match(out, /ap- 로 시작하는 토큰이 하나도 없습니다/);
 	});
 
 	it("prefix 설정을 따른다", (t) => {

@@ -106,8 +106,15 @@ export function run({ root, options }) {
 	}
 	const defined = parseDefinedTokens(css);
 	const definedCount = Object.values(defined).reduce((n, s) => n + s.size, 0);
-	if (definedCount === 0) {
-		console.error(`check-design-tokens: ${options.tokensCss} 에서 정의된 토큰을 하나도 찾지 못했습니다 — 공회전이라 통과로 치지 않습니다.`);
+	// 접두가 틀리면(설정 오타 · 토큰 이름 체계 변경) 모든 사용이 "정의 안 됨" 이 아니라 검사 범위 밖이 돼 조용히 통과한다.
+	const prefixedCount = Object.values(defined).reduce(
+		(n, s) => n + [...s].filter((t) => t.startsWith(options.prefix)).length,
+		0,
+	);
+	if (prefixedCount === 0) {
+		console.error(
+			`check-design-tokens: ${options.tokensCss} 에 ${options.prefix} 로 시작하는 토큰이 하나도 없습니다 — prefix 설정을 확인하세요(공회전이라 통과로 치지 않습니다).`,
+		);
 		return 1;
 	}
 

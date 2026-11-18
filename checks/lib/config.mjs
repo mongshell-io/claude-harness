@@ -79,7 +79,7 @@ function validateValue(where, spec, value) {
 				return;
 			}
 			for (const key of Object.keys(item)) {
-				if (!(key in fields)) problems.push(`${at} 에 모르는 키 "${key}" (허용: ${Object.keys(fields).join(", ")})`);
+				if (!Object.hasOwn(fields, key)) problems.push(`${at} 에 모르는 키 "${key}" (허용: ${Object.keys(fields).join(", ")})`);
 			}
 			for (const [key, type] of Object.entries(fields)) {
 				const v = item[key];
@@ -111,11 +111,11 @@ export function resolveOptions(name, schema, section) {
 	}
 	const problems = [];
 	for (const key of Object.keys(section)) {
-		if (!(key in schema)) problems.push(`${where} 에 모르는 키 "${key}" (허용: ${Object.keys(schema).join(", ") || "없음"})`);
+		if (!Object.hasOwn(schema, key)) problems.push(`${where} 에 모르는 키 "${key}" (허용: ${Object.keys(schema).join(", ") || "없음"})`);
 	}
 	const options = {};
 	for (const [key, spec] of Object.entries(schema)) {
-		if (key in section) {
+		if (Object.hasOwn(section, key)) {
 			problems.push(...validateValue(`${where}.${key}`, spec, section[key]));
 			options[key] = section[key];
 		} else if (spec.required) {
