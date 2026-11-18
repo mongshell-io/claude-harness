@@ -4,7 +4,7 @@
 # workspace 정리 스니펫은 plugins/mongshell-dev/references/ci-setup-wiring.md 가 권위다(claude-harness#50 할 일 2).
 # 내용은 감바우 verify.yml 의 준비 스텝을 기준으로 다섯 저장소(sellcaddie · gambau · a2s · k2sell · m2sell)의 것을 합쳤다.
 #
-# 러너: 조직 공용 self-hosted 맥(라벨 `openclaw-mac`)과 GitHub 호스티드 ubuntu-latest 양쪽에서 돈다. 경로는 `$HOME` ·
+# 러너: 조직 공용 self-hosted 맥(라벨 `mongshell-runner`)과 GitHub 호스티드 ubuntu-latest 양쪽에서 돈다. 경로는 `$HOME` ·
 # `$RUNNER_TEMP` · `$RUNNER_NAME` 만 쓴다(호스티드 러너의 RUNNER_NAME 에는 공백이 있어 전부 따옴표로 감싼다).
 #
 # 영향 범위: 이 파일의 변경은 `@main` 으로 부르는 저장소 전부에 **머지 즉시** 적용된다 — 사람이 읽고 머지한다.

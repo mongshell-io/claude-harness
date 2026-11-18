@@ -15,7 +15,7 @@ Node · pnpm 준비는 하네스 저장소의 composite action [`.github/actions
 - 하네스 쪽 변경은 `@main` 으로 부르는 저장소 전부에 **머지 즉시** 적용된다. 하네스 PR 은 사람이 읽고 머지한다.
 - action 이 하는 일: `actions/setup-node@v7` → corepack(러너 이름별 폴더에 캐시)으로 `packageManager` 의 pnpm 켜기 → 루트 `pnpm install --frozen-lockfile --store-dir "$HOME/.pnpm-store"`.
 - 전제: 저장소 `package.json` 에 `packageManager: "pnpm@<버전>"` 이 있다 — pnpm 버전은 워크플로에 적지 않는다.
-- 러너: self-hosted `openclaw-mac` 과 ubuntu-latest 양쪽에서 돈다. 호스티드 러너는 pnpm 저장소가 잡마다 비어 매번 받는다(setup-node `cache:` 를 쓰지 않는 대가).
+- 러너: self-hosted `mongshell-runner` 과 ubuntu-latest 양쪽에서 돈다. 호스티드 러너는 pnpm 저장소가 잡마다 비어 매번 받는다(setup-node `cache:` 를 쓰지 않는 대가).
 
 ## 입력
 
@@ -31,7 +31,7 @@ Node · pnpm 준비는 하네스 저장소의 composite action [`.github/actions
 jobs:
   static:
     name: static (lint · typecheck)
-    runs-on: [self-hosted, openclaw-mac]   # GitHub 호스티드면 ubuntu-latest
+    runs-on: [self-hosted, mongshell-runner]   # GitHub 호스티드면 ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7

@@ -45,9 +45,9 @@ on:
         type: string
         required: true
       runner:
-        description: '러너 라벨 JSON 배열 (예: ["self-hosted","openclaw-mac"] · ["ubuntu-latest"])'
+        description: '러너 라벨 JSON 배열 (예: ["self-hosted","mongshell-runner"] · ["ubuntu-latest"])'
         type: string
-        default: '["self-hosted","openclaw-mac"]'
+        default: '["self-hosted","mongshell-runner"]'
       label:
         description: 자동 머지를 요청하는 PR 라벨 이름
         type: string
