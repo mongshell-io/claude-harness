@@ -49,7 +49,7 @@ describe("journal", () => {
 	it("journal 에 없는 .sql (고아 마이그레이션) 은 실패", (t) => {
 		const { code, out } = runCheck(t, "journal", journalFiles([e(0, 1)], ["0000_m", "0001_orphan"]));
 		assert.equal(code, 1);
-		assert.match(out, /0001_orphan.sql 이 journal 에 없음/);
+		assert.match(out, /drizzle\/0001_orphan.sql 이 journal 에 없음/);
 	});
 
 	it("entries 가 비면 실패 (fail-open 방지)", (t) => {

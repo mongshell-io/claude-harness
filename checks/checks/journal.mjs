@@ -21,7 +21,7 @@
  */
 
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 
 export const name = "journal";
 
@@ -49,16 +49,16 @@ export function findNonMonotonic(entries, known) {
 	return violations;
 }
 
-/** `.sql` 파일 tag ↔ journal tag 불일치 (순수 함수). */
-export function findOrphans(sqlTags, tags) {
+/** `.sql` 파일 tag ↔ journal tag 불일치 (순수 함수). dir 은 보고용 폴더 이름. */
+export function findOrphans(sqlTags, tags, dir = "drizzle") {
 	const problems = [];
 	const tagSet = new Set(tags);
 	for (const tag of sqlTags) {
-		if (!tagSet.has(tag)) problems.push(`${tag}.sql 이 journal 에 없음 — migrate 가 조용히 건너뜁니다`);
+		if (!tagSet.has(tag)) problems.push(`${dir}/${tag}.sql 이 journal 에 없음 — migrate 가 조용히 건너뜁니다`);
 	}
 	const sqlSet = new Set(sqlTags);
 	for (const tag of tags) {
-		if (!sqlSet.has(tag)) problems.push(`journal tag ${tag} 의 ${tag}.sql 이 없음`);
+		if (!sqlSet.has(tag)) problems.push(`journal tag ${tag} 의 ${dir}/${tag}.sql 이 없음`);
 	}
 	if (tagSet.size !== tags.length) problems.push("journal 에 같은 tag 가 두 번 있음");
 	return problems;
@@ -90,7 +90,7 @@ export function run({ root, options }) {
 		.filter((f) => f.endsWith(".sql"))
 		.map((f) => f.slice(0, -".sql".length));
 	const tags = entries.map((e) => e.tag);
-	const orphanProblems = findOrphans(sqlTags, tags);
+	const orphanProblems = findOrphans(sqlTags, tags, relative(root, drizzleDir).split(sep).join("/"));
 
 	// 쓰이지 않는 예외는 낡은 설정이다 — 그 idx 가 지금 단조라면 예외가 필요 없다.
 	const actuallyNonMonotonic = new Set(findNonMonotonic(entries, new Set()).map((v) => v.entry.idx));
