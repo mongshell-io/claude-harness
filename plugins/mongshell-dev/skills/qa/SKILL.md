@@ -286,6 +286,8 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 
 `code-reviewer` 의 `### Pre-existing` 절은 등급 합산에 넣지 않고 리포트의 `### Pre-existing` 절로 그대로 옮긴다 (README "공통 분류 등급" — 귀속 표시, 머지 게이트 비포함).
 
+`code-reviewer` 의 `## 체크리스트 (REVIEW.md)` 절(트리거된 항목 번호)은 Step 5 요약의 `REVIEW.md 트리거` 줄로 옮긴다 — 위반 자체는 이미 등급 findings 로 들어온다.
+
 ### Step 5: 통합 리포트 출력
 
 ```markdown
@@ -331,6 +333,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - Decision 도입 버전: ✅ 확정할 것 없음 / 🔧 N건 자동 확정 — 이번 커밋에 포함하세요 (`파일:line → vX.Y.Z` 목록) / ⏭️ 결정 문서 없음 — 스킵
 - browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
 - `code-reviewer`: ✅ 완료 / ⏭️ `--skip-code-review` 사용자 명시 스킵
+- REVIEW.md 트리거: 공통: C1 / 없음 · 프로젝트: R2 · R5 / 없음 / 해당 없음 (파일 없음) / 해당 없음 (origin/main ref 없음) (두 칸 따로, 예: `공통: C1 · 프로젝트: 해당 없음 (파일 없음)`) / ⏭️ code-reviewer 미호출 — 스킵 (code-reviewer 결과 그대로, fetch 실패 문구가 있으면 덧붙임 — `references/review-checklist.md`)
 - `security-reviewer`: ✅ 완료 / ⏭️ 단발 기본 — 스킵 / ⏭️ 코드 변경 없음 — 스킵
 - 외부 LLM: 지정했을 때만 도구별 한 줄 (표기는 `references/external-llm-review.md` "결과 분류")
 - `doc-reviewer`: ✅ 완료 / ⏭️ doc 도메인 변경 없음 — 스킵
