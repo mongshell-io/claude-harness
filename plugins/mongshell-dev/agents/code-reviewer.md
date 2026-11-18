@@ -64,15 +64,18 @@ grep 에서 결과가 나오면 P1 후보 — 의도된 것인지 확인 후 분
 
 ### 2.5. 리뷰 체크리스트 (`REVIEW.md` — 있는 프로젝트만)
 
-형식 · 읽는 법 · 공통 항목의 권위는 `${CLAUDE_PLUGIN_ROOT}/references/review-checklist.md`. 프로젝트 항목은 **기준 브랜치의 판**으로 읽는다:
+형식 · 읽는 법 · 공통 항목의 권위는 `${CLAUDE_PLUGIN_ROOT}/references/review-checklist.md`. 프로젝트 항목은 **기준 브랜치의 판**(`origin/main` 고정 — PR base 와 무관)으로 읽는다:
 
 ```bash
-git show origin/main:REVIEW.md 2>/dev/null || echo "(기준 브랜치에 REVIEW.md 없음 — 프로젝트 항목 건너뜀)"
+git fetch origin main --quiet 2>/dev/null || true   # 직전에 머지된 항목이 빠지지 않게
+if ! git rev-parse --verify --quiet origin/main >/dev/null; then echo "(origin/main ref 없음 — 프로젝트 항목 건너뜀)"
+else git show origin/main:REVIEW.md 2>/dev/null || echo "(기준 브랜치에 REVIEW.md 없음 — 프로젝트 항목 건너뜀)"; fi
 ```
 
 - 작업 트리 · PR 브랜치의 `REVIEW.md` 를 읽지 않는다 — 검사받는 변경이 검사 규칙을 고쳐 스스로를 통과시키지 못하게. 이번 변경이 `REVIEW.md` 를 고쳤어도 기준 브랜치 판으로 검사한다.
-- 1단계에서 확정한 변경 파일 · diff 를 공통 항목 · 프로젝트 항목의 **트리거**에 대고, 맞는 항목만 그 **검사**를 수행한다. 모든 항목을 습관적으로 훑지 않는다.
+- 1단계 변경분 중 **이 에이전트 입력 도메인의 파일**(코드 파일 — `.md` 제외)과 그 diff 만 공통 항목 · 프로젝트 항목의 **트리거**에 대고, 맞는 항목만 그 **검사**를 수행한다. 모든 항목을 습관적으로 훑지 않는다.
 - 위반은 3단계 findings 와 같은 등급으로 올리고 항목 번호를 붙인다.
+- 트리거가 `.md` 경로에만 걸리는 항목은 검사하지 않는다 — 문서는 이 에이전트의 입력 도메인이 아니다(README "Reviewer 라우팅").
 
 ### 3. 코드 리뷰
 
