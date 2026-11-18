@@ -14,7 +14,8 @@
 #
 # 정책: 거부(사람이 머지) 집합은 **각 저장소가 정한다** — `inputs.deny_paths`. 권위는 그 저장소 루트 CLAUDE.md 정책 노브.
 # 사용자 결정 2026-11-18 의 기본값: DB 마이그레이션(`drizzle/` · `src/lib/db/schema/` · `drizzle.config.ts`) +
-# 호출 파일 자신(`.github/workflows/automerge.yml`). 비면 fail-closed(전부 거부).
+# 워크플로 전부(`.github/workflows/` — 검사를 느슨하게 고친 PR 이 그 느슨한 검사로 자동 머지되는 길을 막는다. 호출 파일 자신 포함).
+# 비면 fail-closed(전부 거부).
 #
 # 영향 범위: 이 파일의 변경은 `@main` 으로 부르는 저장소 전부(최대 6개)에 **머지 즉시** 적용된다. 이 저장소의 PR 은
 # 자동 머지 대상이 아니다 — 사람이 읽고 머지한다. 이 저장소에는 이 파일을 도는 트리거(push/pull_request)를 두지 않는다 —

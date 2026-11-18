@@ -40,7 +40,7 @@ jobs:
       pull-requests: write
       issues: write
     with:
-      deny_paths: '^(drizzle/|src/lib/db/schema/|drizzle\.config\.ts$|\.github/workflows/automerge\.yml$)'
+      deny_paths: '^(drizzle/|src/lib/db/schema/|drizzle\.config\.ts$|\.github/workflows/)'
       # runner: '["ubuntu-latest"]'   # 기본 ["self-hosted","openclaw-mac"]. GitHub 호스트 러너를 쓰는 저장소만 적는다.
       # label: automerge              # 기본값과 다를 때만
 ```
@@ -48,7 +48,7 @@ jobs:
 - **concurrency 를 호출 파일에 두지 않는다** — 재사용 쪽 잡이 PR 단위 concurrency 를 갖는다. 같은 이름의 그룹을 워크플로 단위로 또 두면 교착으로 취소된다.
 - **`permissions` 는 호출 잡에 준다** — 재사용 쪽 잡은 그 범위 안에서만 쓴다. 덜 주면 재사용 잡이 시작 단계에서 실패한다(머지되지 않음 · fail-closed).
 - **`secrets:` 는 넘기지 않는다** — 재사용 쪽은 호출 저장소의 `github.token` 만 쓴다.
-- 거부 집합이 DB 마이그레이션 경로를 갖지 않는 저장소(예: drizzle 이 없는 저장소)도 호출 파일 자신(`\.github/workflows/automerge\.yml$`)은 반드시 넣는다. `deny_paths` 가 비거나 정규식이 잘못되면 재사용 쪽이 전부 거부한다.
+- 거부 집합이 DB 마이그레이션 경로를 갖지 않는 저장소(예: drizzle 이 없는 저장소)도 워크플로 디렉토리(`\.github/workflows/`)는 반드시 넣는다 — 검사 정의(verify)와 호출 파일 자신을 PR 이 자동 머지로 바꾸지 못하게 한다. `deny_paths` 가 비거나 정규식이 잘못되면 재사용 쪽이 전부 거부한다.
 
 ## verify 워크플로 쪽 요구
 
@@ -75,7 +75,7 @@ jobs:
 상시 코어 블록의 「정책 노브」 줄에서 `automerge` 항목을 아래처럼 적는다 — 경로 집합은 그 저장소의 `deny_paths` 와 같게 유지한다.
 
 ```markdown
-`automerge` 라벨 — 붙이면 verify 성공 뒤 자동 squash 머지. **사람이 머지** = `drizzle/`·`src/lib/db/schema/`·`drizzle.config.ts`(DB 마이그레이션)·`.github/workflows/automerge.yml`(호출 파일 자신)이 바뀐 PR — 하네스 공용 automerge 의 risk guard 가 라벨이 있어도 거부한다. 이 집합의 권위는 이 줄이고 호출 파일 `deny_paths` 는 이를 따른다.
+`automerge` 라벨 — 붙이면 verify 성공 뒤 자동 squash 머지. **사람이 머지** = `drizzle/`·`src/lib/db/schema/`·`drizzle.config.ts`(DB 마이그레이션)·`.github/workflows/`(검사 정의와 이 호출 파일 — 검사가 스스로 약해지는 PR 을 막는다)가 바뀐 PR — 하네스 공용 automerge 의 risk guard 가 라벨이 있어도 거부한다. 이 집합의 권위는 이 줄이고 호출 파일 `deny_paths` 는 이를 따른다.
 ```
 
 스택 메모 등에 자동 머지 수단을 설명하는 줄이 있으면 「verify.yml `automerge` 잡」 대신 「`.github/workflows/automerge.yml`(하네스 공용 재사용 워크플로 호출, `workflow_run`)」 으로 바꾼다.
