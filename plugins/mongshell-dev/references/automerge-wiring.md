@@ -1,10 +1,11 @@
 ---
-role: "mongshell-io 앱 저장소가 하네스 공용 automerge 재사용 워크플로를 부르는 배선 — 호출 파일 전문 · verify 워크플로 쪽 요구 · 루트 CLAUDE.md 정책 노브 문장."
+role: "mongshell-io 앱 저장소가 하네스 공용 automerge 재사용 워크플로를 부르는 배선 — 호출 파일 전문 · verify 워크플로 쪽 요구."
 kind: operational
 non_goals:
   - "자동 머지 로직 자체(PR 판정 · 거부 경로 가드 · squash · 브랜치 삭제 · 이슈 닫기) — 하네스 `.github/workflows/automerge.yml` 이 권위"
   - "저장소마다 무엇을 사람이 머지할지(거부 경로 집합) — 각 저장소 루트 CLAUDE.md 정책 노브가 권위"
   - "머지 규약(squash 만 · `--delete-branch` 금지) — 루트 CLAUDE.md 상시 코어 (`claude-md-core.md`)"
+  - "루트 CLAUDE.md 정책 노브의 `automerge` · 사람이 머지 · High 경로 문장 — `claude-md-core.md` 가 정본"
 ---
 
 # automerge 배선
@@ -51,6 +52,7 @@ jobs:
 - **`secrets:` 는 넘기지 않는다** — 재사용 쪽은 호출 저장소의 `github.token` 만 쓴다.
 - 워크플로 디렉토리(`.github/workflows/`)는 `deny_paths` 와 별개로 **재사용 쪽이 항상 거부한다** — 검사 정의(verify)와 호출 파일 자신을 PR 이 자동 머지로 바꾸지 못한다. 정책 노브 줄과 맞추려고 `deny_paths` 에도 적어 두지만, 빠뜨려도 막힌다. `deny_paths` 가 비거나 정규식이 잘못되면 재사용 쪽이 전부 거부한다.
 - `deny_paths` 는 **POSIX ERE 만** 쓴다(`\d` · `(?:)` · lookaround 금지) — 러너마다 BSD/GNU grep 이 달라 확장 문법은 한쪽에서만 맞는다.
+- `deny_paths` 는 **한 줄 · 홑따옴표 · `^(갈래|갈래)` 모양**으로 적는다(위 전문처럼) — `/qa` 의 `scripts/risk-paths.sh` 가 그 모양만 읽어 정책 노브와 대조한다. 겹따옴표 · 블록 스칼라(`|` · `>`) · 여러 줄이면 못 읽고 경고만 낸다(가드 동작은 같다).
 - 자동 머지는 base 가 저장소 기본 브랜치인 PR 만 한다 — 다른 브랜치를 향한 PR(스택 PR 등)은 라벨이 있어도 건너뛴다.
 
 ## verify 워크플로 쪽 요구
