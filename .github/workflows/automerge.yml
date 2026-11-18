@@ -63,6 +63,8 @@ jobs:
     runs-on: ${{ fromJSON(inputs.runner) }}
     timeout-minutes: 5
     permissions:
+      # actions: read — 트리거한 verify 실행의 잡 목록(모든 잡 success 확인)을 읽는다. 호출 잡도 이 권한을 줘야 한다.
+      actions: read
       contents: write
       pull-requests: write
       issues: write
