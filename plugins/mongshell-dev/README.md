@@ -2,7 +2,7 @@
 role: "Claude Code 하네스 흐름도 + 에이전트 cross-cutting 공유 정의(라우팅 / 공통 분류 등급 / 검증 책임 / 본문 작성 가이드)의 단일 권위"
 kind: operational
 non_goals:
-  - "운영 정책 — 각 소유 스킬(브랜치=pr, 라벨=create-issue) 과 소비 프로젝트 루트 CLAUDE.md 상시 코어(머지 규약 등)가 분담"
+  - "운영 정책 — 각 소유 스킬(브랜치·PR `automerge` 라벨=pr, 이슈 라벨=create-issue) 과 소비 프로젝트 루트 CLAUDE.md 상시 코어(머지 규약 등)가 분담"
   - "개별 skill·agent 의 상세 동작 (각 SKILL.md / agent frontmatter 가 권위)"
   - "권위 문서 목록 / frontmatter 스키마 (required-docs.md)"
 ---

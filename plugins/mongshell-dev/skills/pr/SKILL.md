@@ -85,7 +85,7 @@ PR 생성 전, 사용자가 로컬에서 브랜치를 띄워 변경을 눈으로
 SKETCH=$(git log @{u}..HEAD --pretty=format:"%s%n%b" 2>/dev/null)
 [ -z "$SKETCH" ] && SKETCH=$(git log -5 --pretty=format:"%s%n%b")
 # fallback: 최근 5개 (다른 브랜치 커밋 포함 가능)
-# QA 발견 요약 + 위험 경로: /qa --branch 가 marker 에 남긴 내용 (Step 0 게이트와 같은 경로). 부재 시 빈 문자열.
+# QA 발견 요약 + 위험 경로 · 사람이 머지: /qa --branch 가 marker 에 남긴 내용 (Step 0 게이트와 같은 경로). 부재 시 빈 문자열.
 QA_SUMMARY=$(cat "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)" 2>/dev/null)
 ```
 
@@ -99,7 +99,8 @@ QA_SUMMARY=$(cat "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)"
 
 ## Risk
 <Low / Medium / High> — <한 줄 이유. $QA_SUMMARY 의 "위험 경로" 가 "없음" 이 아니면 High 로 제안하고 그 경로를 적는다.
-High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). High 조건만 루트 CLAUDE.md 작업 규약 코어가 정의한다("위험 등급" — "정책 노브" 가 High 경로 집합을 나열하고 있으면 그 집합) —
+High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). "사람이 머지" 가 "없음" 이 아니면 자동 머지가 거부되니 사람이 머지한다고 함께 적는다.
+High 조건만 루트 CLAUDE.md 작업 규약 코어가 정의한다("위험 등급" · "정책 노브" 의 사람이 머지 · High 경로 집합) —
 Low/Medium 은 사용자 판단(기본 제안 Low)>
 
 ## How to revert
@@ -143,6 +144,14 @@ EOF
 
 생성 실패 시 stderr 사용자 전달 + stop.
 
+**`automerge` 라벨 (루트 CLAUDE.md 정책 노브가 `automerge` 라벨을 정한 프로젝트만)** — 만든 직후 묻지 않고 붙인다. 사람이 머지 경로에 걸린 PR 이어도 붙인다 — 거부는 공용 automerge 의 risk guard 가 하고, 라벨 여부를 여기서 판정하지 않는다(등급은 라벨 여부를 정하지 않는다 — 코어 「위험 등급」).
+
+```bash
+grep -q '`automerge` 라벨' CLAUDE.md && gh pr edit "$(gh pr view --json number -q .number)" --add-label automerge
+```
+
+라벨 붙이기 실패(저장소에 라벨 없음 등)는 stderr 를 사용자에게 전달하고 PR 생성 결과 리포트는 계속한다.
+
 ### Step 4: 검증 + 리포트
 
 ```bash
@@ -167,6 +176,6 @@ gh pr view --json url,number,title,state --jq '{url, number, title, state}'
 
 ## 제약
 
-- 메인 세션이 절차를 오케스트레이션한다. 코드 / 문서 편집 X — git/gh 명령만 (브랜치 push / PR 생성 / view).
+- 메인 세션이 절차를 오케스트레이션한다. 코드 / 문서 편집 X — git/gh 명령만 (브랜치 push / PR 생성 / 라벨 / view).
 - PR body 의 Summary / Test plan / Risk / How to revert 본문은 사용자가 자유 작성. 자동 생성은 sketch 제안만 — Risk 등급 제안과 QA 발견 요약은 `/qa --branch` 가 남긴 marker 내용에서만 가져오고, `/pr` 이 diff 를 따로 계산하지 않는다 (아래 로컬 base 비교 금지).
 - **로컬 base 비교 금지**: PR 의 변경분 계산·충돌 표시는 GitHub(origin/main merge-base 기준) 책임. `/pr` 은 로컬 base diff(`main..HEAD` 등)를 계산하지 않는다 — 로컬 main ref 는 워크트리와 독립적으로 움직여 신뢰 불가하며, 로컬 비교는 격리를 침범한다.
