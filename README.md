@@ -88,6 +88,7 @@ gh label create area:meta --color f9d0c4 --description "비-코드 작업 (하�
 claude-harness/
 ├── .claude-plugin/marketplace.json   # 마켓플레이스 정의 (name: mongshell)
 ├── .github/workflows/automerge.yml   # 앱 저장소 공용 PR 자동 머지 (workflow_call 전용 — 이 저장소 트리거 없음, 사람이 머지)
+├── .github/actions/setup-node-pnpm/  # 앱 저장소 공용 CI 준비 composite action (Node · corepack pnpm · install)
 ├── plugins/mongshell-dev/            # 하네스 단일 원본
 │   ├── .claude-plugin/plugin.json
 │   ├── README.md                     #   흐름도·라우팅·공통 정의·본문 작성 가이드
@@ -97,6 +98,7 @@ claude-harness/
 │   ├── LICENSE.superpowers           #   규율 스킬 출처(obra/superpowers) MIT 고지
 │   ├── references/                   #   required-docs(이식 계약)·infra-gotchas(인프라 함정)·external-llm-review(외부 LLM 절차)·review-checklist(REVIEW.md 형식·공통 항목)
 │   │                                 #   automerge-wiring(앱 저장소의 공용 automerge 호출 배선)
+│   │                                 #   ci-setup-wiring(앱 저장소 CI 잡의 setup-node-pnpm 배선)
 │   │                                 #   repo-templates(저장소 설정 정본 적용·대조, biome·tsconfig 공통 값 표)
 │   ├── templates/                    #   앱 저장소 설정 정본 — dependabot.yml·pull_request_template.md·claude-settings.json
 │   └── scripts/                      #   decisions 인덱스·버전 검증
