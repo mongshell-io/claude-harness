@@ -97,6 +97,8 @@ claude-harness/
 │   ├── LICENSE.superpowers           #   규율 스킬 출처(obra/superpowers) MIT 고지
 │   ├── references/                   #   required-docs(이식 계약)·infra-gotchas(인프라 함정)·external-llm-review(외부 LLM 절차)·review-checklist(REVIEW.md 형식·공통 항목)
 │   │                                 #   automerge-wiring(앱 저장소의 공용 automerge 호출 배선)
+│   │                                 #   repo-templates(저장소 설정 정본 적용·대조, biome·tsconfig 공통 값 표)
+│   ├── templates/                    #   앱 저장소 설정 정본 — dependabot.yml·pull_request_template.md·claude-settings.json
 │   └── scripts/                      #   decisions 인덱스·버전 검증
 ├── plugins/mongshell-ops/            # 운영 도구 (플러그인 채널 전용)
 │   ├── .claude-plugin/plugin.json

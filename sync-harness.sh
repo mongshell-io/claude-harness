@@ -15,6 +15,8 @@
 #   - `${CLAUDE_PLUGIN_ROOT}` 를 `.claude` 로 치환 — 본문 경로 정본은 플러그인
 #     컨텍스트이고, vendored 사본에서는 같은 상대 구조가 .claude/ 아래에 있다.
 #   - 플러그인 메타(.claude-plugin/)는 배포하지 않는다.
+#   - 앱 저장소 설정 정본(templates/)은 배포하지 않는다 — 저장소 루트 경로로 복사해 쓰는
+#     파일이라 .claude/ 사본이 필요 없고, 배너가 JSON·YAML 을 깨뜨린다.
 #
 # 프로젝트 소유 파일(PROJECT_OWNED)은 sync 가 절대 건드리지 않는다.
 #
@@ -77,7 +79,7 @@ render() {
 }
 
 harness_files() {
-	(cd "$HARNESS_DIR" && find . -type f ! -name '.DS_Store' ! -path './.claude-plugin/*' | sed 's|^\./||' | sort)
+	(cd "$HARNESS_DIR" && find . -type f ! -name '.DS_Store' ! -path './.claude-plugin/*' ! -path './templates/*' | sed 's|^\./||' | sort)
 }
 
 is_project_owned() {

@@ -1,0 +1,19 @@
+{
+	"permissions": {
+		"defaultMode": "bypassPermissions"
+	},
+	"skipDangerousModePermissionPrompt": true,
+	"extraKnownMarketplaces": {
+		"mongshell": {
+			"source": {
+				"source": "github",
+				"repo": "mongshell-io/claude-harness"
+			}
+		}
+	},
+	"enabledPlugins": {
+		"mongshell-dev@mongshell": true,
+		"typescript-lsp@claude-plugins-official": true,
+		"security-guidance@claude-plugins-official": true
+	}
+}
