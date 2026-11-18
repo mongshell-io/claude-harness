@@ -236,6 +236,20 @@ frontmatter 없음 — doc-reviewer 일반 문서 skip / `adr-content-mismatch` 
 
 ---
 
+## `REVIEW.md` (저장소 루트)
+
+- **kind**: `operational`
+- **role**: 사고 · 실수에서 나온 리뷰 체크리스트 — 항목마다 diff 트리거 · 검사 · 근거
+- **frontmatter**: 선택
+- **적용 범위**: 선택 계약. 없는 프로젝트는 `code-reviewer` 가 프로젝트 항목을 건너뛴다.
+
+### 하네스가 요구하는 본문 구조
+
+- 형식(열 · 번호) · 읽는 법 · 항목 추가 · 정리 기준의 권위는 [review-checklist.md](./review-checklist.md) — 프로젝트 파일은 항목 표만 두고 그 문서를 한 줄로 가리킨다.
+- `code-reviewer` 는 이 파일을 작업 트리가 아니라 기준 브랜치(`git show origin/main:REVIEW.md`)에서 읽는다.
+
+---
+
 ## 다루지 않는 것
 
 - **영역별 `CLAUDE.md`** — 프로젝트 디렉토리 구조에 따라 가변. 작성 안내는 SSOT 저장소 README 이식 가이드의 「영역별 `CLAUDE.md`」 단계(5번).

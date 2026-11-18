@@ -62,6 +62,21 @@ grep 에서 결과가 나오면 P1 후보 — 의도된 것인지 확인 후 분
 - 영역별 `CLAUDE.md` 는 작업 시점에 자동 로드됩니다
 - 영역 인덱스가 필요하면 루트 `CLAUDE.md` Sub-Documents 섹션 참조
 
+### 2.5. 리뷰 체크리스트 (`REVIEW.md` — 있는 프로젝트만)
+
+형식 · 읽는 법 · 공통 항목의 권위는 `${CLAUDE_PLUGIN_ROOT}/references/review-checklist.md`. 프로젝트 항목은 **기준 브랜치의 판**(`origin/main` 고정 — PR base 와 무관)으로 읽는다:
+
+```bash
+git fetch origin main --quiet 2>/dev/null || true   # 직전에 머지된 항목이 빠지지 않게
+if ! git rev-parse --verify --quiet origin/main >/dev/null; then echo "(origin/main ref 없음 — 프로젝트 항목 건너뜀)"
+else git show origin/main:REVIEW.md 2>/dev/null || echo "(기준 브랜치에 REVIEW.md 없음 — 프로젝트 항목 건너뜀)"; fi
+```
+
+- 작업 트리 · PR 브랜치의 `REVIEW.md` 를 읽지 않는다 — 검사받는 변경이 검사 규칙을 고쳐 스스로를 통과시키지 못하게. 이번 변경이 `REVIEW.md` 를 고쳤어도 기준 브랜치 판으로 검사한다.
+- 1단계 변경분 중 **이 에이전트 입력 도메인의 파일**(코드 파일 — `.md` 제외)과 그 diff 만 공통 항목 · 프로젝트 항목의 **트리거**에 대고, 맞는 항목만 그 **검사**를 수행한다. 모든 항목을 습관적으로 훑지 않는다.
+- 위반은 3단계 findings 와 같은 등급으로 올리고 항목 번호를 붙인다.
+- 트리거가 `.md` 경로에만 걸리는 항목은 검사하지 않는다 — 문서는 이 에이전트의 입력 도메인이 아니다(README "Reviewer 라우팅").
+
 ### 3. 코드 리뷰
 
 > **검증 명령(typecheck/test/lint/build) 실행은 caller 책임** (`${CLAUDE_PLUGIN_ROOT}/README.md` "검증 명령 실행 책임" 참조). 이 에이전트는 순수 정적 리뷰만 수행한다 — `/qa` · `/plan` 은 실행 결과를 전달하지 않고 스스로 종합한다. **직접 호출에서** 호출자가 프롬프트에 실행 결과를 함께 준 경우에만 그것을 리뷰 컨텍스트로 활용하고, 종합 검증·리포트가 필요하면 `/qa` 호출을 권장한다.
@@ -108,6 +123,9 @@ grep 에서 결과가 나오면 P1 후보 — 의도된 것인지 확인 후 분
 발견 N건 (P0 a · P1 b · P2 c) · Pre-existing d — N = a+b+c (Pre-existing 은 합산 밖). 고칠 것이 없으면 "고칠 것 없음" 이라고 분명히 쓴다
 [변경 사항 한눈에]
 
+## 체크리스트 (REVIEW.md)
+트리거된 항목: R2 · R5 (없으면 「없음」, 파일이 없으면 「해당 없음」)
+
 ## 변경 파일
 - **API**: [files]
 - **UI**: [files]
@@ -142,6 +160,7 @@ grep 에서 결과가 나오면 P1 후보 — 의도된 것인지 확인 후 분
 - 차단 이슈 vs 선택적 이슈 명확 구분
 - 요약 첫 줄은 발견 개수로 시작 — 없으면 "고칠 것 없음" 명시
 - 영역별 `CLAUDE.md` 운영 규약 위반 여부 점검
+- 기준 브랜치에 `REVIEW.md` 가 있으면 트리거된 항목만 검사하고 그 번호를 리포트에 적기
 - Architecture Decisions 위반 여부 점검 (영역별 `CLAUDE.md` 및 `docs/architecture-decisions.md` 상태 인덱스 + 관련 active Decision 본문 참조)
 - 정적 분석 중 발견한 명백한 lint / 타입 위반은 P0 후보로 보고 (`${CLAUDE_PLUGIN_ROOT}/README.md` "검증 명령 실행 책임" 참조 — 검증 명령 실행은 caller, 본 에이전트는 정적 분석 결과만 보고)
 
