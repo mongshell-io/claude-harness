@@ -32,7 +32,7 @@ die() { printf '\033[31m%s\033[0m\n' "$*" >&2; exit 1; }
 info() { printf '%s\n' "$*"; }
 
 usage() {
-	sed -n '3,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+	sed -n '3,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
 	exit 2
 }
 

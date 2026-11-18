@@ -10,7 +10,7 @@ non_goals:
 
 # 저장소 설정 템플릿
 
-mongshell-io 앱 저장소(sellcaddie · gambau · mongshell-admin · auction2sell · k2sell · m2sell)는 저장소 설정을 같은 정본에서 가져온다. 정본은 이 플러그인의 `templates/` 에 있고, 세션에서는 `${CLAUDE_PLUGIN_ROOT}/templates/` 로 읽는다.
+mongshell-io 앱 저장소(sellcaddie · gambau · mongshell-admin · auction2sell · k2sell · m2sell)는 저장소 설정을 같은 정본에서 가져온다. 정본은 이 플러그인의 `templates/` 에 있고, 세션에서는 `${CLAUDE_PLUGIN_ROOT}/templates/` 로 읽는다. 이 경로는 플러그인 채널에서만 있다 — vendored 채널은 `templates/` 를 배포하지 않으므로(`sync-harness.sh`) SSOT 저장소 [mongshell-io/claude-harness `plugins/mongshell-dev/templates/`](https://github.com/mongshell-io/claude-harness/tree/main/plugins/mongshell-dev/templates) 를 체크아웃해 쓴다.
 
 ## 정본과 저장소 경로
 
@@ -25,6 +25,8 @@ PR 템플릿의 Risk 칸은 「automerge 라벨은 만든 직후, 사람이 머�
 ## 적용 (새 저장소 · 빠진 파일)
 
 ```bash
+# 플러그인 채널 전용 경로 — vendored 채널에는 templates/ 가 배포되지 않으므로 SSOT 저장소 체크아웃을 가리킨다
+#   (예: H=<claude-harness 체크아웃>/plugins/mongshell-dev/templates)
 H="${CLAUDE_PLUGIN_ROOT}/templates"
 mkdir -p .github .claude
 cp "$H/pull_request_template.md" .github/pull_request_template.md
@@ -42,6 +44,8 @@ git ls-files '*pnpm-lock.yaml' '*package-lock.json' | xargs -n1 dirname
 저장소 루트에서 실행한다. 출력이 비어야 하는 줄과 허용 차이만 남아야 하는 줄을 나눠 본다.
 
 ```bash
+# 플러그인 채널 전용 경로 — vendored 채널에는 templates/ 가 배포되지 않으므로 SSOT 저장소 체크아웃을 가리킨다
+#   (예: H=<claude-harness 체크아웃>/plugins/mongshell-dev/templates)
 H="${CLAUDE_PLUGIN_ROOT}/templates"
 # 비어야 한다
 diff "$H/pull_request_template.md" .github/pull_request_template.md
