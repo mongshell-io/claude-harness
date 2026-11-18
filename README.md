@@ -6,7 +6,7 @@ Mongshell 의 개인용 Claude Code 플러그인 저장소. 개발 하네스(mon
 |---|---|---|---|
 | **플러그인** (기본) | 내 프로젝트 전부 | `/plugin install mongshell-dev@mongshell` | autoUpdate — SSOT push 가 곧 반영 |
 | **vendored** (예외) | 협업자에게 설치·네임스페이스를 노출하지 않을 저장소 | `./sync-harness.sh sync <프로젝트>` 로 `.claude/` 에 커밋 | 수동 재sync |
-| **git 의존성** (공용 코드) | mongshell-io 앱 저장소 — 공용 `check:*` 검사 [`@mongshell/checks`](checks/) | `"@mongshell/checks": "github:mongshell-io/claude-harness#main&path:/checks"` (devDependencies) | 앱에서 `pnpm up @mongshell/checks` — lockfile 이 커밋 SHA 로 고정 |
+| **git 의존성** (공용 코드) | mongshell-io 앱 저장소 — 공용 `check:*` 검사 [`@mongshell/checks`](checks/) | `"@mongshell/checks": "github:mongshell-io/claude-harness#main&path:/checks"` (devDependencies) | 앱에서 같은 지정을 `pnpm add -D` 로 다시 — lockfile 이 커밋 SHA 로 고정 ([checks/README.md](checks/README.md) 「설치」) |
 
 > 같은 마켓플레이스에 **운영 도구 플러그인 [mongshell-ops](plugins/mongshell-ops/)** 도 있습니다 — 개발 절차가 아니라 OpenClaw 등 외부 운영 시스템과 Claude Code 를 잇는 도구입니다. 플러그인 채널로만 배포하고(vendored 대상 아님), 아래 하네스 규칙(이식 계약·중립성 등)은 적용되지 않습니다. 설치·셋업은 그 README.
 
