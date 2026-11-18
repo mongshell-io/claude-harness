@@ -1,7 +1,7 @@
 # checks/ 패키지(@mongshell/checks) 테스트 — `node --test`.
 #
 # 🔴 GitHub 호스티드 러너(ubuntu-latest)에서만 돈다. 이 저장소는 public 이라 외부 PR 도 이 워크플로를 돌린다 —
-# 조직의 self-hosted 러너(openclaw-mac)를 쓰면 외부 코드가 그 맥에서 돈다. public 저장소의 호스티드 러너는 과금이 없다.
+# 조직의 self-hosted 러너(mongshell-runner)를 쓰면 외부 코드가 그 맥에서 돈다. public 저장소의 호스티드 러너는 과금이 없다.
 # 권한은 읽기뿐이고 비밀값을 쓰지 않는다.
 name: checks-test
 

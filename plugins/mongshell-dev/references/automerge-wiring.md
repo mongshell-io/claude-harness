@@ -43,7 +43,7 @@ jobs:
       issues: write
     with:
       deny_paths: '^(drizzle/|src/lib/db/schema/|drizzle\.config\.ts$|\.github/workflows/)'
-      # runner: '["ubuntu-latest"]'   # 기본 ["self-hosted","openclaw-mac"]. GitHub 호스트 러너를 쓰는 저장소만 적는다.
+      # runner: '["ubuntu-latest"]'   # 기본 ["self-hosted","mongshell-runner"]. GitHub 호스트 러너를 쓰는 저장소만 적는다.
       # label: automerge              # 기본값과 다를 때만
 ```
 
