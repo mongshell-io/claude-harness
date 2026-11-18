@@ -15,7 +15,8 @@
 # 정책: 거부(사람이 머지) 집합은 **각 저장소가 정한다** — `inputs.deny_paths`. 권위는 그 저장소 루트 CLAUDE.md 정책 노브.
 # 사용자 결정 2026-11-18 의 기본값: DB 마이그레이션(`drizzle/` · `src/lib/db/schema/` · `drizzle.config.ts`) +
 # 워크플로 전부(`.github/workflows/` — 검사를 느슨하게 고친 PR 이 그 느슨한 검사로 자동 머지되는 길을 막는다. 호출 파일 자신 포함).
-# 비면 fail-closed(전부 거부).
+# `.github/workflows/` 는 입력과 별개로 이 파일이 항상 거부한다(risk guard 의 ALWAYS_DENY) — 입력은 그 위에 더하는 저장소별 집합이다.
+# deny_paths 가 비거나 정규식이 잘못되면 fail-closed(전부 거부). base 가 저장소 기본 브랜치인 PR 만 머지한다.
 #
 # 영향 범위: 이 파일의 변경은 `@main` 으로 부르는 저장소 전부(최대 6개)에 **머지 즉시** 적용된다. 이 저장소의 PR 은
 # 자동 머지 대상이 아니다 — 사람이 읽고 머지한다. 이 저장소에는 이 파일을 도는 트리거(push/pull_request)를 두지 않는다 —
@@ -27,7 +28,7 @@
 # - 검사한 커밋(`workflow_run.head_sha`)만 머지한다 — 그 사이 새 커밋이 오면 resolve 가 건너뛰고(머지 API 도 409 로 거부),
 #   새 커밋의 실행이 다시 판단한다.
 # - squash 만. GITHUB_TOKEN 으로 머지하면 저장소 설정 delete_branch_on_merge 와 `Closes #N` 처리가 돌지 않으므로 직접 한다.
-# - 비밀값은 받지 않는다 — `github.token`(호출자 저장소의 GITHUB_TOKEN)만 쓴다. 쓰기 권한(contents · pull-requests · issues)은
+# - 비밀값은 받지 않는다 — `github.token`(호출자 저장소의 GITHUB_TOKEN)만 쓰고, 명령줄이 아니라 권한 600 헤더 파일로 넘긴다. 쓰기 권한(contents · pull-requests · issues)은
 #   호출 잡이 준다. 호출 잡이 덜 주면 이 잡이 시작 단계에서 실패한다(fail-closed).
 # - gh CLI · jq 가 러너에 있다고 가정하지 않고 REST API 를 curl 로 부르고 응답은 grep/sed 로 읽는다.
 # - 이벤트 값(브랜치명 등)과 입력값은 `run:` 안에 `${{ }}` 로 넣지 않고 env 로만 넘긴다.
@@ -38,7 +39,8 @@ on:
     inputs:
       deny_paths:
         description: >-
-          자동 머지를 거부할 경로 정규식(grep -E, 저장소 루트 기준 경로에 맞춘다). rename 은 옮기기 전 경로도 본다.
+          자동 머지를 거부할 경로 정규식(grep -E, POSIX ERE 만 — 러너마다 BSD/GNU grep 이 다르다. 저장소 루트 기준 경로에 맞춘다).
+          rename 은 옮기기 전 경로도 본다. `.github/workflows/` 는 이 입력과 별개로 항상 거부한다.
           비거나 잘못된 정규식이면 전부 거부한다.
         type: string
         required: true
@@ -70,51 +72,75 @@ jobs:
       group: automerge-${{ github.repository }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
       cancel-in-progress: false
     steps:
+      # 토큰은 명령줄 인자로 넘기지 않는다 — 공유 self-hosted 러너에서 `ps` 로 다른 잡에 보인다. 헤더 파일(권한 600)에 한 번 쓰고
+      # 모든 curl 이 `-H @파일` 로 읽는다. printf 는 셸 내장이라 프로세스 목록에 남지 않는다. 마지막 단계가 지운다.
+      - name: auth header
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf 'Authorization: Bearer %s\n' "$GH_TOKEN" > "$RUNNER_TEMP/gh-auth.header"
       # 머지 대상 PR 을 정한다. workflow_run 이벤트의 PR 목록은 실행 시점 사본이라 PR 을 다시 조회해 지금 상태로 판단한다.
-      # 건너뛰기(정상 종료 · proceed 없음): PR 목록이 비었음(포크 PR 등) · PR 이 이미 닫힘 · head 가 검사한 커밋과 다름 · 라벨 없음.
+      # 후보는 이벤트의 pull_requests 전부이고, base 가 저장소 기본 브랜치인 열린 PR 하나만 고른다 — 기본 브랜치가 아닌 곳을
+      # 향한 PR(스택 PR · 다른 장기 브랜치)은 거부 집합이 지키는 대상이 아니라 자동 머지하지 않는다.
+      # 건너뛰기(정상 종료 · proceed 없음): 후보 없음(포크 PR 등) · 기본 브랜치를 향한 열린 PR 없음 · head 가 검사한 커밋과 다름 · 라벨 없음.
       # 라벨 없는 PR 마다 빨간 실행이 생기지 않도록 이것들은 실패가 아니다. API 실패·응답 해석 실패는 판정할 수 없으므로 실패(fail-closed).
       - name: resolve PR
         id: resolve
         env:
-          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          PRS: ${{ toJSON(github.event.workflow_run.pull_requests) }}
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
           HEAD_REF: ${{ github.event.workflow_run.head_branch }}
           HEAD_REPO: ${{ github.event.workflow_run.head_repository.full_name }}
           LABEL: ${{ inputs.label }}
         run: |
           set -euo pipefail
+          auth="$RUNNER_TEMP/gh-auth.header"
           if [ -z "$LABEL" ]; then echo "::error::label 입력이 비어 있음 — automerge 거부"; exit 1; fi
-          if [ -z "$PR" ]; then echo "연결된 PR 없음(포크 PR 등) — 건너뜀"; exit 0; fi
-          case "$PR" in *[!0-9]*) echo "::error::PR 번호 형식 이상 ($PR)"; exit 1 ;; esac
-          body="$RUNNER_TEMP/pr.json"
-          status=$(curl -sS -o "$body" -w '%{http_code}' \
-            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/$REPO/pulls/$PR")
-          if [ "$status" != "200" ]; then
-            echo "::error::PR 조회 실패 (HTTP $status) — 판정할 수 없어 automerge 거부"
-            cat "$body"; exit 1
-          fi
-          # PR 응답의 첫 `"state"` 는 PR 자신의 상태다(milestone 의 state 는 뒤에 온다). 첫 `"sha"` 는 head.sha 다 —
-          # 응답 키 순서가 head → base 이고 `merge_commit_sha` 는 `"sha"` 패턴에 걸리지 않는다. 순서가 바뀌어 잘못 읽어도
-          # 머지 요청은 검사한 커밋(RUN_SHA)으로만 가므로 다른 커밋이 머지되지는 않는다.
-          state=$(grep -o '"state": *"[a-z]*"' "$body" | head -1 | sed 's/.*"\([a-z]*\)"$/\1/' || true)
-          head_sha=$(grep -o '"sha": *"[0-9a-f]*"' "$body" | head -1 | sed 's/.*"\([0-9a-f]*\)"$/\1/' || true)
-          changed=$(grep -o '"changed_files": *[0-9]*' "$body" | head -1 | sed 's/.*: *//' || true)
-          if [ -z "$state" ] || [ -z "$head_sha" ] || [ -z "$changed" ]; then
-            echo "::error::PR 응답 해석 실패 (state='$state' sha='$head_sha' changed_files='$changed') — automerge 거부"
-            exit 1
-          fi
-          if [ "$state" != "open" ]; then echo "PR #$PR 이 열려 있지 않음 ($state) — 건너뜀"; exit 0; fi
-          if [ "$head_sha" != "$RUN_SHA" ]; then
-            echo "PR #$PR head($head_sha)가 검사한 커밋($RUN_SHA)과 다름 — 새 커밋의 실행이 판단한다. 건너뜀"; exit 0
-          fi
+          if [ -z "$DEFAULT_BRANCH" ]; then echo "::error::저장소 기본 브랜치를 읽지 못함 — automerge 거부"; exit 1; fi
+          # pull_requests 항목의 키(id · number · url · head · base)에서 `"number"` 는 PR 번호뿐이다(head/base 의 repo 에는 없다).
+          candidates=$(printf '%s' "$PRS" | tr -d '\n\r' | grep -o '"number": *[0-9]*' | sed 's/.*: *//' || true)
+          if [ -z "$candidates" ]; then echo "연결된 PR 없음(포크 PR 등) — 건너뜀"; exit 0; fi
+          PR=""; changed=""
+          for c in $candidates; do
+            body="$RUNNER_TEMP/pr-$c.json"
+            status=$(curl -gsS -o "$body" -w '%{http_code}' \
+              -H @"$auth" -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/pulls/$c")
+            if [ "$status" != "200" ]; then
+              echo "::error::PR #$c 조회 실패 (HTTP $status) — 판정할 수 없어 automerge 거부"
+              cat "$body"; exit 1
+            fi
+            # 줄바꿈을 지워 한 줄로 읽는다(응답 서식이 바뀌어도 같은 패턴이 맞게). PR 응답의 첫 `"state"` 는 PR 자신의 상태다
+            # (milestone 의 state 는 뒤에 온다). 첫 `"sha"` 는 head.sha 다 — 응답 키 순서가 head → base 이고 `merge_commit_sha` 는
+            # `"sha"` 패턴에 걸리지 않는다. base.ref 는 `"base": { "label": …, "ref": …` 로 읽는다. 순서가 바뀌어 잘못 읽어도
+            # 머지 요청은 검사한 커밋(RUN_SHA)으로만 가므로 다른 커밋이 머지되지는 않는다.
+            flat=$(tr -d '\n\r' < "$body")
+            state=$(printf '%s' "$flat" | grep -o '"state": *"[a-z]*"' | head -1 | sed 's/.*"\([a-z]*\)"$/\1/' || true)
+            head_sha=$(printf '%s' "$flat" | grep -o '"sha": *"[0-9a-f]*"' | head -1 | sed 's/.*"\([0-9a-f]*\)"$/\1/' || true)
+            c_changed=$(printf '%s' "$flat" | grep -o '"changed_files": *[0-9]*' | head -1 | sed 's/.*: *//' || true)
+            base_ref=$(printf '%s' "$flat" | grep -o '"base": *{ *"label": *"[^"]*", *"ref": *"[^"]*"' | head -1 \
+              | sed 's/.*"ref": *"//; s/"$//' || true)
+            if [ -z "$state" ] || [ -z "$head_sha" ] || [ -z "$c_changed" ] || [ -z "$base_ref" ]; then
+              echo "::error::PR #$c 응답 해석 실패 (state='$state' sha='$head_sha' changed_files='$c_changed' base='$base_ref') — automerge 거부"
+              exit 1
+            fi
+            if [ "$base_ref" != "$DEFAULT_BRANCH" ]; then echo "PR #$c base($base_ref)가 기본 브랜치($DEFAULT_BRANCH)가 아님 — 후보 제외"; continue; fi
+            if [ "$state" != "open" ]; then echo "PR #$c 이 열려 있지 않음 ($state) — 후보 제외"; continue; fi
+            if [ "$head_sha" != "$RUN_SHA" ]; then
+              echo "PR #$c head($head_sha)가 검사한 커밋($RUN_SHA)과 다름 — 새 커밋의 실행이 판단한다. 후보 제외"; continue
+            fi
+            PR=$c; changed=$c_changed; break
+          done
+          if [ -z "$PR" ]; then echo "기본 브랜치($DEFAULT_BRANCH)를 향한 열린 PR 중 검사한 커밋의 것이 없음 — 건너뜀"; exit 0; fi
           # 라벨은 라벨 목록 API 로 따로 읽는다 — PR 응답의 `"name"` 은 저장소·팀 이름과 섞인다.
           # 라벨 이름은 정규식이 아니라 문자열 그대로 비교한다(-Fx).
           labels="$RUNNER_TEMP/labels.json"
-          status=$(curl -sS -o "$labels" -w '%{http_code}' \
-            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+          status=$(curl -gsS -o "$labels" -w '%{http_code}' \
+            -H @"$auth" -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$REPO/issues/$PR/labels?per_page=100")
           if [ "$status" != "200" ]; then
             echo "::error::PR 라벨 조회 실패 (HTTP $status) — 판정할 수 없어 automerge 거부"
@@ -131,22 +157,26 @@ jobs:
             echo "head_ref=$HEAD_REF"
             echo "head_repo=$HEAD_REPO"
           } >> "$GITHUB_OUTPUT"
-          echo "PR #$PR ($RUN_SHA, $changed 파일) — automerge 판정 진행"
+          echo "PR #$PR ($RUN_SHA, $changed 파일, base $DEFAULT_BRANCH) — automerge 판정 진행"
       # 거부 경로 가드: PR 변경 파일이 `inputs.deny_paths` 에 걸리면 자동 머지하지 않는다 — 사람이 적용 순서(DB 마이그레이션)나
       # 가드 변경 내용을 보고 머지한다. 집합의 권위는 호출 저장소 루트 CLAUDE.md 정책 노브.
+      # `.github/workflows/` 는 입력과 별개로 항상 거부한다(ALWAYS_DENY) — 호출 파일이 deny_paths 에서 빠뜨려도 검사 정의(verify)와
+      # 호출 파일 자신을 바꾼 PR 이 그 바뀐 검사로 자동 머지되지 않는다.
       # fail-closed: 판정할 수 없으면 거부한다. deny_paths 가 비었거나 정규식이 잘못됐으면(grep exit 2) 거부한다 — `|| true` 로
       # 삼키면 잘못된 정규식이 "걸린 것 없음" 으로 읽혀 전부 통과한다. files API 가 200 이 아니거나, 읽은 파일 수가 PR 의
       # changed_files 와 다르면(절반만 읽힘·10페이지 초과) 실패시킨다. rename 은 옮기기 전 경로(previous_filename)도 본다.
       - name: risk guard
         if: ${{ steps.resolve.outputs.proceed == 'true' }}
         env:
-          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ steps.resolve.outputs.pr }}
           CHANGED: ${{ steps.resolve.outputs.changed_files }}
           DENY_PATHS: ${{ inputs.deny_paths }}
         run: |
           set -euo pipefail
+          # 입력과 별개로 항상 거부한다 — 호출 파일이 deny_paths 에서 빠뜨려도 워크플로(검사 정의 · 호출 파일 자신) 변경은 사람이 머지.
+          # env 가 아니라 스크립트 상수로 둔다 — 값이 빠지면 아래 판정 subshell 이 unbound 로 죽어 "걸린 것 없음" 과 구분되지 않는다.
+          ALWAYS_DENY='^\.github/workflows/'
           if [ -z "${DENY_PATHS//[[:space:]]/}" ]; then
             echo "::error::deny_paths 입력이 비어 있음 — 판정할 수 없어 automerge 거부"; exit 1
           fi
@@ -158,8 +188,8 @@ jobs:
           for page in 1 2 3 4 5 6 7 8 9 10; do
             body="$RUNNER_TEMP/pr-files-$page.json"
             url="https://api.github.com/repos/$REPO/pulls/$PR/files?per_page=100&page=$page"
-            status=$(curl -sS -o "$body" -w '%{http_code}' \
-              -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$url")
+            status=$(curl -gsS -o "$body" -w '%{http_code}' \
+              -H @"$RUNNER_TEMP/gh-auth.header" -H "Accept: application/vnd.github+json" "$url")
             if [ "$status" != "200" ]; then
               echo "::error::PR files API 실패 (HTTP $status, page $page) — 판정할 수 없어 automerge 거부"
               cat "$body"; exit 1
@@ -175,7 +205,7 @@ jobs:
             echo "::error::변경 파일 수 불일치 — API $n 건, PR $CHANGED 건. 판정할 수 없어 automerge 거부"
             exit 1
           fi
-          rc=0; risky=$(printf '%s\n' "$paths" | grep -E -- "$DENY_PATHS") || rc=$?
+          rc=0; risky=$(printf '%s\n' "$paths" | grep -E -e "$DENY_PATHS" -e "$ALWAYS_DENY") || rc=$?
           if [ "$rc" -gt 1 ]; then echo "::error::거부 경로 판정 실패 (grep exit $rc) — automerge 거부"; exit 1; fi
           if [ -n "$risky" ]; then
             echo "::error::자동 머지 거부 경로 변경 — 사람이 머지하세요."
@@ -187,13 +217,12 @@ jobs:
         id: merge
         if: ${{ steps.resolve.outputs.proceed == 'true' }}
         env:
-          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ steps.resolve.outputs.pr }}
           SHA: ${{ steps.resolve.outputs.sha }}
         run: |
-          status=$(curl -sS -o "$RUNNER_TEMP/merge.json" -w '%{http_code}' -X PUT \
-            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+          status=$(curl -gsS -o "$RUNNER_TEMP/merge.json" -w '%{http_code}' -X PUT \
+            -H @"$RUNNER_TEMP/gh-auth.header" -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$REPO/pulls/$PR/merge" \
             -d "{\"merge_method\":\"squash\",\"sha\":\"$SHA\"}")
           cat "$RUNNER_TEMP/merge.json"
@@ -205,8 +234,8 @@ jobs:
           if [ "$status" = "405" ]; then
             for i in 1 2 3 4 5; do
               sleep 3
-              curl -sS -o "$RUNNER_TEMP/pr.json" \
-                -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              curl -gsS -o "$RUNNER_TEMP/pr.json" \
+                -H @"$RUNNER_TEMP/gh-auth.header" -H "Accept: application/vnd.github+json" \
                 "https://api.github.com/repos/$REPO/pulls/$PR" || continue
               if grep -q '"merged": *true' "$RUNNER_TEMP/pr.json" && grep -q "\"sha\": *\"$SHA\"" "$RUNNER_TEMP/pr.json"; then
                 echo "이미 머지됨 (같은 커밋 $SHA) — 통과"; exit 0
@@ -224,7 +253,6 @@ jobs:
       - name: close linked issues
         if: ${{ !cancelled() && steps.merge.outcome == 'success' }}
         env:
-          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR: ${{ steps.resolve.outputs.pr }}
         run: |
@@ -232,8 +260,8 @@ jobs:
           owner=${REPO%/*}; name=${REPO#*/}
           query="query { repository(owner: \\\"$owner\\\", name: \\\"$name\\\") { pullRequest(number: $PR) { closingIssuesReferences(first: 50) { nodes { number state repository { nameWithOwner } } } } } }"
           body="$RUNNER_TEMP/closing.json"
-          status=$(curl -sS -o "$body" -w '%{http_code}' -X POST \
-            -H "Authorization: Bearer $GH_TOKEN" "https://api.github.com/graphql" -d "{\"query\":\"$query\"}")
+          status=$(curl -gsS -o "$body" -w '%{http_code}' -X POST \
+            -H @"$RUNNER_TEMP/gh-auth.header" "https://api.github.com/graphql" -d "{\"query\":\"$query\"}")
           if [ "$status" != "200" ] || grep -q '"errors"' "$body"; then
             echo "::error::연결 이슈 조회 실패 (HTTP $status) — 머지는 끝났다. 연결 이슈를 손으로 닫으세요."
             cat "$body"; exit 1
@@ -244,31 +272,36 @@ jobs:
             echo "::error::연결 이슈 응답을 해석하지 못함 ($total 건 중 일부) — 머지는 끝났다. 연결 이슈를 손으로 닫으세요."
             cat "$body"; exit 1
           fi
-          issues=$(printf '%s\n' "$links" | grep -F "\"$REPO\"" | grep '"state": *"OPEN"' \
+          issues=$(printf '%s\n' "$links" | grep -iF "\"$REPO\"" | grep '"state": *"OPEN"' \
             | sed 's/"number": *\([0-9]*\).*/\1/' || true)
           if [ -z "$issues" ]; then echo "닫을 연결 이슈 없음 (연결 $total 건)"; exit 0; fi
           failed=""
           for n in $issues; do
-            status=$(curl -sS -o "$RUNNER_TEMP/issue-$n.json" -w '%{http_code}' -X PATCH \
-              -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            status=$(curl -gsS -o "$RUNNER_TEMP/issue-$n.json" -w '%{http_code}' -X PATCH \
+              -H @"$RUNNER_TEMP/gh-auth.header" -H "Accept: application/vnd.github+json" \
               "https://api.github.com/repos/$REPO/issues/$n" -d '{"state":"closed","state_reason":"completed"}' || true)
             if [ "$status" = "200" ]; then echo "#$n 닫음"; else failed="$failed #$n"; cat "$RUNNER_TEMP/issue-$n.json" || true; fi
           done
           if [ -n "$failed" ]; then echo "::error::닫기 실패:$failed — 손으로 닫으세요."; exit 1; fi
       # head 브랜치를 직접 지운다. GITHUB_TOKEN 으로 머지하면 저장소 설정 delete_branch_on_merge 가 동작하지 않아 브랜치가 남는다.
       # 404(이미 없음)·422(참조 없음)는 지울 것이 없다는 뜻이라 통과시킨다. 포크 PR 의 브랜치는 이 저장소에 없으므로 건너뛴다.
-      # 브랜치명은 URL 경로에 그대로 넣는다 — `chore/foo` 의 `/` 는 refs 경로 구분자 그대로가 맞다.
+      # 브랜치명은 URL 경로에 그대로 넣는다 — `chore/foo` 의 `/` 는 refs 경로 구분자 그대로가 맞다. 그래서 허용 문자
+      # `[A-Za-z0-9._/-]` 밖의 이름은 지우지 않는다(경고만) — `#` 뒤가 URL 조각으로 잘리거나 `%`·`{}`·`[]`·`,` 가 다른 ref 로
+      # 해석돼 엉뚱한 브랜치(예: `development#1` → `development`)가 지워질 수 있다. 모든 curl 의 `-g` 는 globbing 을 끈다.
       - name: delete head branch
         if: ${{ !cancelled() && steps.merge.outcome == 'success' }}
         env:
-          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           HEAD_REPO: ${{ steps.resolve.outputs.head_repo }}
           BRANCH: ${{ steps.resolve.outputs.head_ref }}
         run: |
           if [ "$HEAD_REPO" != "$REPO" ]; then echo "포크 PR — 브랜치 삭제 건너뜀"; exit 0; fi
-          status=$(curl -sS -o "$RUNNER_TEMP/delete-ref.json" -w '%{http_code}' -X DELETE \
-            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+          case "$BRANCH" in
+            ''|*[!A-Za-z0-9._/-]*)
+              echo "::warning::브랜치명에 허용 밖 문자가 있어 삭제를 건너뜀 ($BRANCH) — 손으로 지우세요."; exit 0 ;;
+          esac
+          status=$(curl -gsS -o "$RUNNER_TEMP/delete-ref.json" -w '%{http_code}' -X DELETE \
+            -H @"$RUNNER_TEMP/gh-auth.header" -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/$REPO/git/refs/heads/$BRANCH" || true)
           case "$status" in
             204) echo "브랜치 $BRANCH 삭제" ;;
@@ -276,3 +309,7 @@ jobs:
             *) echo "::error::브랜치 삭제 실패 (HTTP $status) — 머지는 끝났다. git push origin --delete $BRANCH 로 지우세요."
                cat "$RUNNER_TEMP/delete-ref.json" || true; exit 1 ;;
           esac
+      # 토큰 헤더 파일을 지운다 — 잡 임시 폴더는 러너가 비우지만, self-hosted 러너에서 그 시점을 기대지 않는다.
+      - name: remove auth header
+        if: ${{ always() }}
+        run: rm -f "$RUNNER_TEMP/gh-auth.header"
