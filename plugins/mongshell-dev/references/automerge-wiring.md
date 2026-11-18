@@ -36,6 +36,7 @@ jobs:
     if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
     uses: mongshell-io/claude-harness/.github/workflows/automerge.yml@main
     permissions:
+      actions: read
       contents: write
       pull-requests: write
       issues: write
@@ -46,7 +47,7 @@ jobs:
 ```
 
 - **concurrency 를 호출 파일에 두지 않는다** — 재사용 쪽 잡이 PR 단위 concurrency 를 갖는다. 같은 이름의 그룹을 워크플로 단위로 또 두면 교착으로 취소된다.
-- **`permissions` 는 호출 잡에 준다** — 재사용 쪽 잡은 그 범위 안에서만 쓴다. 덜 주면 재사용 잡이 시작 단계에서 실패한다(머지되지 않음 · fail-closed).
+- **`permissions` 는 호출 잡에 준다**(`actions: read` · `contents: write` · `pull-requests: write` · `issues: write`) — 재사용 쪽 잡은 그 범위 안에서만 쓴다. `actions: read` 가 빠지면 잡 목록 조회가 403 으로 실패해 자동 머지가 전부 멈춘다(2026-11-18 실측). 덜 주면 재사용 잡이 시작 단계에서 실패한다(머지되지 않음 · fail-closed).
 - **`secrets:` 는 넘기지 않는다** — 재사용 쪽은 호출 저장소의 `github.token` 만 쓴다.
 - 워크플로 디렉토리(`.github/workflows/`)는 `deny_paths` 와 별개로 **재사용 쪽이 항상 거부한다** — 검사 정의(verify)와 호출 파일 자신을 PR 이 자동 머지로 바꾸지 못한다. 정책 노브 줄과 맞추려고 `deny_paths` 에도 적어 두지만, 빠뜨려도 막힌다. `deny_paths` 가 비거나 정규식이 잘못되면 재사용 쪽이 전부 거부한다.
 - `deny_paths` 는 **POSIX ERE 만** 쓴다(`\d` · `(?:)` · lookaround 금지) — 러너마다 BSD/GNU grep 이 달라 확장 문법은 한쪽에서만 맞는다.
