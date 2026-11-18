@@ -101,7 +101,7 @@ claude-harness/
 │   │                                 #   ci-setup-wiring(앱 저장소 CI 잡의 setup-node-pnpm 배선)
 │   │                                 #   repo-templates(저장소 설정 정본 적용·대조, biome·tsconfig 공통 값 표)
 │   ├── templates/                    #   앱 저장소 설정 정본 — dependabot.yml·pull_request_template.md·claude-settings.json
-│   └── scripts/                      #   decisions 인덱스·버전 검증
+│   └── scripts/                      #   decisions 인덱스·버전 검증 · 위험 경로 패턴(risk-paths.sh)
 ├── plugins/mongshell-ops/            # 운영 도구 (플러그인 채널 전용)
 │   ├── .claude-plugin/plugin.json
 │   ├── README.md                     #   새 PC 셋업·OpenClaw 쪽 전제·문제 해결
