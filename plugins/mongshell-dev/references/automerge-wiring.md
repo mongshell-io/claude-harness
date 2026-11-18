@@ -63,6 +63,7 @@ jobs:
       types: [opened, synchronize, reopened, labeled]
   ```
 
+- **verify 의 잡을 라벨 `if:` 필터로 전부 건너뛰게 해도 자동 머지는 일어나지 않는다** — 재사용 쪽이 트리거한 verify 실행의 잡 목록을 읽어 잡이 1개 이상이고 모든 잡이 `success` 일 때만 진행한다(skipped · cancelled 가 하나라도 있으면 건너뜀). 그래서 다른 라벨의 `labeled` 실행이 앞선 검사 실패를 덮지 못한다.
 - **verify 안에 automerge 잡을 남기지 않는다** — 옮긴 뒤 옛 `automerge` 잡(`needs: [static, test]`)은 지운다. 두 경로가 같은 PR 을 동시에 머지하려 하면 한쪽이 405 로 실패한다(재사용 쪽은 같은 커밋이 머지됐으면 통과로 보지만 옛 잡은 그렇지 않다).
 - **선택: 라벨 이벤트의 concurrency 분리** — verify 의 `concurrency.group` 에 라벨 이벤트를 따로 두면 라벨 붙이기가 진행 중인 코드 검사 실행을 취소하지 않는다(a2s 방식).
 

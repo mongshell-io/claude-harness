@@ -81,6 +81,52 @@ jobs:
           set -euo pipefail
           umask 077
           printf 'Authorization: Bearer %s\n' "$GH_TOKEN" > "$RUNNER_TEMP/gh-auth.header"
+      # verify 실행의 잡이 **전부** success 일 때만 진행한다. 잡 `if` 의 conclusion == 'success' 만으로는 부족하다 — verify 의 잡이
+      # `if:` 필터로 전부 건너뛰어진 실행(예: 다른 라벨을 붙인 labeled 이벤트)이 success 로 보고되면, 이미 라벨이 있는 PR 이
+      # 검사 없이(앞선 검사가 실패했어도) 머지된다. GitHub 이 그런 실행을 success 로 보고하는지 실측하지 않았으므로 구조로 막는다.
+      # 건너뛰기(정상 종료 · ok 없음): 잡 0개 · success 가 아닌 잡(skipped · cancelled · neutral · null 등)이 하나라도 있음.
+      # 실패(fail-closed): API 실패 · 응답 해석 실패. 잡의 conclusion 은 job 객체와 각 step 객체에 모두 있어, job 것만 센다 —
+      # job 객체의 키 순서는 `… "html_url", "status", "conclusion" …` 이고 step 은 `"name", "status", "conclusion"` 이다. 그렇게 읽은
+      # 수가 total_count 와도, job 에만 있는 `"run_id"` 의 수와도 같아야 하고(100개 초과 · 키 순서 변경 · 일부만 읽힘 → 실패),
+      # 모든 run_id 가 이 실행이어야 한다. step 의 conclusion 과 잡 안의 스텝 조건(`if: !cancelled()` 등)은 보지 않는다.
+      - name: require all verify jobs success
+        id: checks
+        env:
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -euo pipefail
+          case "$RUN_ID" in ''|*[!0-9]*) echo "::error::verify 실행 id 를 읽지 못함 ('$RUN_ID') — automerge 거부"; exit 1 ;; esac
+          body="$RUNNER_TEMP/run-jobs.json"
+          status=$(curl -gsS -o "$body" -w '%{http_code}' \
+            -H @"$RUNNER_TEMP/gh-auth.header" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100")
+          if [ "$status" != "200" ]; then
+            echo "::error::verify 잡 목록 조회 실패 (HTTP $status) — 판정할 수 없어 automerge 거부"
+            cat "$body"; exit 1
+          fi
+          flat=$(tr -d '\n\r' < "$body")
+          total=$(printf '%s' "$flat" | grep -o '"total_count": *[0-9]*' | head -1 | sed 's/.*: *//' || true)
+          run_ids=$(printf '%s' "$flat" | grep -o '"run_id": *[0-9]*' | sed 's/.*: *//' || true)
+          concl=$(printf '%s' "$flat" \
+            | grep -oE '"html_url": *"[^"]*", *"status": *"[a-z_]*", *"conclusion": *("[a-z_]*"|null)' \
+            | sed 's/.*"conclusion": *//; s/"//g' || true)
+          n_ids=$(printf '%s\n' "$run_ids" | grep -c . || true)
+          n_concl=$(printf '%s\n' "$concl" | grep -c . || true)
+          if [ -z "$total" ] || [ "$n_ids" != "$total" ] || [ "$n_concl" != "$total" ]; then
+            echo "::error::verify 잡 목록 해석 실패 (total_count='$total' run_id $n_ids 건 conclusion $n_concl 건) — automerge 거부"
+            exit 1
+          fi
+          if [ -n "$run_ids" ] && printf '%s\n' "$run_ids" | grep -qvFx -- "$RUN_ID"; then
+            echo "::error::잡 목록에 다른 실행의 잡이 섞임 — automerge 거부"; exit 1
+          fi
+          if [ "$total" = "0" ]; then echo "verify 실행에 잡이 없음 — 건너뜀"; exit 0; fi
+          bad=$(printf '%s\n' "$concl" | grep -vFx success || true)
+          if [ -n "$bad" ]; then
+            echo "verify 잡 중 success 가 아닌 것이 있음 ($(printf '%s\n' "$bad" | sort -u | tr '\n' ' ')) — 건너뜀"; exit 0
+          fi
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+          echo "verify 잡 $total 개 모두 success — 진행"
       # 머지 대상 PR 을 정한다. workflow_run 이벤트의 PR 목록은 실행 시점 사본이라 PR 을 다시 조회해 지금 상태로 판단한다.
       # 후보는 이벤트의 pull_requests 전부이고, base 가 저장소 기본 브랜치인 열린 PR 하나만 고른다 — 기본 브랜치가 아닌 곳을
       # 향한 PR(스택 PR · 다른 장기 브랜치)은 거부 집합이 지키는 대상이 아니라 자동 머지하지 않는다.
@@ -88,6 +134,7 @@ jobs:
       # 라벨 없는 PR 마다 빨간 실행이 생기지 않도록 이것들은 실패가 아니다. API 실패·응답 해석 실패는 판정할 수 없으므로 실패(fail-closed).
       - name: resolve PR
         id: resolve
+        if: ${{ steps.checks.outputs.ok == 'true' }}
         env:
           REPO: ${{ github.repository }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
