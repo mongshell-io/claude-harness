@@ -85,7 +85,7 @@ PR 생성 전, 사용자가 로컬에서 브랜치를 띄워 변경을 눈으로
 SKETCH=$(git log @{u}..HEAD --pretty=format:"%s%n%b" 2>/dev/null)
 [ -z "$SKETCH" ] && SKETCH=$(git log -5 --pretty=format:"%s%n%b")
 # fallback: 최근 5개 (다른 브랜치 커밋 포함 가능)
-# QA 발견 요약 + 위험 경로: /qa --branch 가 marker 에 남긴 내용 (Step 0 게이트와 같은 경로). 부재 시 빈 문자열.
+# QA 발견 요약 + 위험 경로 · 사람이 머지: /qa --branch 가 marker 에 남긴 내용 (Step 0 게이트와 같은 경로). 부재 시 빈 문자열.
 QA_SUMMARY=$(cat "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)")-$(git rev-parse HEAD)" 2>/dev/null)
 ```
 
@@ -99,7 +99,8 @@ QA_SUMMARY=$(cat "/tmp/qa-pass-$(basename -s .git "$(git remote get-url origin)"
 
 ## Risk
 <Low / Medium / High> — <한 줄 이유. $QA_SUMMARY 의 "위험 경로" 가 "없음" 이 아니면 High 로 제안하고 그 경로를 적는다.
-High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). High 조건만 루트 CLAUDE.md 작업 규약 코어가 정의한다("위험 등급" — "정책 노브" 가 High 경로 집합을 나열하고 있으면 그 집합) —
+High 면 적용 순서까지 (예: 머지 → prod 마이그레이션 → 화면 확인). "사람이 머지" 가 "없음" 이 아니면 자동 머지가 거부되니 사람이 머지한다고 함께 적는다.
+High 조건만 루트 CLAUDE.md 작업 규약 코어가 정의한다("위험 등급" · "정책 노브" 의 사람이 머지 · High 경로 집합) —
 Low/Medium 은 사용자 판단(기본 제안 Low)>
 
 ## How to revert

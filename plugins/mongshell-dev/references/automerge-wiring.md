@@ -75,10 +75,6 @@ jobs:
 
 ## 루트 CLAUDE.md 정책 노브 문장
 
-상시 코어 블록의 「정책 노브」 줄에서 `automerge` 항목을 아래처럼 적는다 — 경로 집합은 그 저장소의 `deny_paths` 와 같게 유지한다.
-
-```markdown
-`automerge` 라벨 — 붙이면 verify 성공 뒤 자동 squash 머지. **사람이 머지** = `drizzle/`·`src/lib/db/schema/`·`drizzle.config.ts`(DB 마이그레이션)·`.github/workflows/`(검사 정의와 이 호출 파일 — 검사가 스스로 약해지는 PR 을 막는다)가 바뀐 PR — 하네스 공용 automerge 의 risk guard 가 라벨이 있어도 거부한다. 이 집합의 권위는 이 줄이고 호출 파일 `deny_paths` 는 이를 따른다.
-```
+`automerge` 라벨 · 「사람이 머지」 · 「High 경로」 문장의 정본은 상시 코어 블록([claude-md-core.md](claude-md-core.md) 「정책 노브」 줄)이다 — 여기 복제하지 않는다. 블록의 「사람이 머지」 경로 집합을 그 저장소의 `deny_paths` 와 같게 유지한다(어긋나면 `/qa` 의 위험 경로 스크립트가 경고한다).
 
 스택 메모 등에 자동 머지 수단을 설명하는 줄이 있으면 「verify.yml `automerge` 잡」 대신 「`.github/workflows/automerge.yml`(하네스 공용 재사용 워크플로 호출, `workflow_run`)」 으로 바꾼다.
