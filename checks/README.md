@@ -12,7 +12,8 @@ mongshell-io 앱 저장소가 같이 쓰는 결정적 검사(`check:*`)입니다
 ```
 
 - pnpm 은 이 지정을 `codeload.github.com` tarball + 커밋 SHA 로 lockfile 에 고정합니다(pnpm 10.33 실측). 설치에 `git` 바이너리도 GitHub 토큰도 필요 없습니다 — 이 저장소가 public 이고, Docker 빌드(`--frozen-lockfile`)도 그대로 받습니다.
-- 갱신은 앱 저장소에서 `pnpm add -D "@mongshell/checks@github:mongshell-io/claude-harness#main&path:/checks"` (같은 지정을 다시 add) → lockfile 의 이 패키지 SHA 만 바뀐 PR 을 냅니다. 🔴 `pnpm up @mongshell/checks` 는 쓰지 않습니다 — pnpm 10.33 실측에서 git 의존성 하나를 올리는데 범위 지정 의존성 전체를 다시 해석해 lockfile 이 수백 줄 바뀌었습니다. `#main` 을 가리키므로 하네스에 머지했다고 앱에 바로 퍼지지 않습니다 — 앱 PR 의 CI 가 새 판을 먼저 돌립니다.
+- 갱신은 앱 저장소에서 `pnpm remove @mongshell/checks && pnpm add -D "@mongshell/checks@github:mongshell-io/claude-harness#main&path:/checks"` → lockfile 의 이 패키지 SHA 세 줄만 바뀐 PR 을 냅니다. `#main` 을 가리키므로 하네스에 머지했다고 앱에 바로 퍼지지 않습니다 — 앱 PR 의 CI 가 새 판을 먼저 돌립니다.
+  - 🔴 `pnpm up @mongshell/checks`(`--depth 0` · `--latest` 포함)는 쓰지 않습니다 — pnpm 10.33 실측에서 범위 지정 의존성 전체를 다시 해석해 lockfile 이 500줄 넘게 바뀌었습니다. 같은 지정을 `pnpm add` 만 다시 하면 lockfile 의 옛 SHA 를 그대로 둡니다.
 - 의존성이 없습니다. `react-compiler` 만 앱의 `next`(내장 babel) · `babel-plugin-react-compiler` 를 앱 package.json 기준으로 찾습니다.
 
 ## 쓰는 법
