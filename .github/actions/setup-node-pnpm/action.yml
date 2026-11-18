@@ -54,9 +54,19 @@ runs:
         export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
         echo "COREPACK_HOME=$COREPACK_HOME" >> "$GITHUB_ENV"
         echo "COREPACK_ENABLE_DOWNLOAD_PROMPT=0" >> "$GITHUB_ENV"
-        COREPACK_CLI="$HOME/.cache/corepack-cli/$RUNNER_NAME/corepack@$COREPACK_VERSION"
-        if [ ! -x "$COREPACK_CLI/node_modules/.bin/corepack" ]; then
-          npm install --prefix "$COREPACK_CLI" --no-audit --no-fund --ignore-scripts "corepack@$COREPACK_VERSION"
+        CLI_ROOT="$HOME/.cache/corepack-cli/$RUNNER_NAME"
+        COREPACK_CLI="$CLI_ROOT/corepack@$COREPACK_VERSION"
+        # 재사용 판정은 실제 실행 성공으로 한다 — bin 링크만 보면 잡 강제 종료(SIGKILL)로 반쯤 깔린 폴더를 계속 "설치됨"으로 쓴다.
+        # 설치는 임시 폴더에 받아 실행을 확인한 뒤 mv 로 옮긴다 — 최종 폴더는 다 깔린 상태로만 생긴다.
+        # 같은 RUNNER_NAME 의 잡은 한 번에 하나라 이 폴더를 다른 잡과 동시에 고치지 않는다.
+        if ! "$COREPACK_CLI/node_modules/.bin/corepack" --version > /dev/null 2>&1; then
+          # 지금 버전이 아닌 폴더(옛 버전 · 중단된 임시 설치)는 지운다 — 버전을 올릴 때마다 쌓이지 않게.
+          for d in "$CLI_ROOT"/corepack@*; do [ "$d" = "$COREPACK_CLI" ] || rm -rf "$d"; done
+          rm -rf "$COREPACK_CLI"
+          tmp="$COREPACK_CLI.tmp.$$"
+          npm install --prefix "$tmp" --no-audit --no-fund --ignore-scripts "corepack@$COREPACK_VERSION"
+          "$tmp/node_modules/.bin/corepack" --version > /dev/null
+          mv "$tmp" "$COREPACK_CLI"
         fi
         mkdir -p "$RUNNER_TEMP/corepack-bin"
         "$COREPACK_CLI/node_modules/.bin/corepack" enable pnpm --install-directory "$RUNNER_TEMP/corepack-bin"
