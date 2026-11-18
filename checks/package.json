@@ -1,0 +1,17 @@
+{
+	"name": "@mongshell/checks",
+	"version": "0.1.0",
+	"private": true,
+	"description": "mongshell-io 앱 저장소 공용 결정적 검사(check:*) — 저장소는 harness.config.json 으로 값만 넘긴다",
+	"type": "module",
+	"bin": {
+		"mongshell-check": "bin/mongshell-check.mjs"
+	},
+	"files": ["bin", "lib", "checks"],
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"test": "node --test"
+	}
+}
