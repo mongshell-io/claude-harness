@@ -228,3 +228,24 @@ describe("run-all", () => {
 		assert.deepEqual(results, [30, 10, 20]);
 	});
 });
+
+describe("숨김 폴더 — src/app/.well-known 같은 실제 라우트", () => {
+	const section = { hint: "폭 안에 맞춘다", decisionRef: "Decision #1" };
+
+	it("no-horizontal-scroll 은 src 아래 숨김 폴더도 검사한다", (t) => {
+		const files = { "src/app/.well-known/x/route.ts": 'const c = "overflow-x-auto";' };
+		const { code, out } = runCheck(t, "no-horizontal-scroll", files, section);
+		assert.equal(code, 1);
+		assert.match(out, /\.well-known\/x\/route.ts:1/);
+	});
+
+	it("no-horizontal-scroll 은 node_modules 에 내려가지 않는다", (t) => {
+		const files = { "src/a.ts": "", "src/node_modules/p/x.ts": 'const c = "overflow-x-auto";' };
+		assert.equal(runCheck(t, "no-horizontal-scroll", files, section).code, 0);
+	});
+
+	it("doc-symbols 는 숨김 폴더(.next 산출물 등)를 증거로 쓰지 않는다", (t) => {
+		const files = { "src/a.ts": "export const x = 1;", "src/.next/chunk.js": "ghostName", "docs/a.md": "`ghostName`" };
+		assert.equal(runCheck(t, "doc-symbols", files, { docs: ["docs/a.md"] }).code, 1);
+	});
+});

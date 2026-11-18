@@ -1,11 +1,12 @@
 # claude-harness
 
-Mongshell 의 개인용 Claude Code 플러그인 저장소. 개발 하네스(mongshell-dev)의 단일 원본은 [plugins/mongshell-dev/](plugins/mongshell-dev/) 이고, 배포 채널은 둘입니다.
+Mongshell 의 개인용 Claude Code 플러그인 저장소. 개발 하네스(mongshell-dev)의 단일 원본은 [plugins/mongshell-dev/](plugins/mongshell-dev/) 입니다. 하네스 배포 채널은 둘(플러그인 · vendored)이고, 하네스가 아닌 공용 코드(검사 스크립트 [checks/](checks/))는 셋째 줄 git 의존성 채널로 받습니다.
 
 | 채널 | 대상 | 받는 방법 | 갱신 |
 |---|---|---|---|
 | **플러그인** (기본) | 내 프로젝트 전부 | `/plugin install mongshell-dev@mongshell` | autoUpdate — SSOT push 가 곧 반영 |
 | **vendored** (예외) | 협업자에게 설치·네임스페이스를 노출하지 않을 저장소 | `./sync-harness.sh sync <프로젝트>` 로 `.claude/` 에 커밋 | 수동 재sync |
+| **git 의존성** (공용 코드) | mongshell-io 앱 저장소 — 공용 `check:*` 검사 [`@mongshell/checks`](checks/) | `"@mongshell/checks": "github:mongshell-io/claude-harness#main&path:/checks"` (devDependencies) | 앱에서 `pnpm up @mongshell/checks` — lockfile 이 커밋 SHA 로 고정 |
 
 > 같은 마켓플레이스에 **운영 도구 플러그인 [mongshell-ops](plugins/mongshell-ops/)** 도 있습니다 — 개발 절차가 아니라 OpenClaw 등 외부 운영 시스템과 Claude Code 를 잇는 도구입니다. 플러그인 채널로만 배포하고(vendored 대상 아님), 아래 하네스 규칙(이식 계약·중립성 등)은 적용되지 않습니다. 설치·셋업은 그 README.
 

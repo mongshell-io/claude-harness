@@ -78,9 +78,10 @@ function toCamelCase(symbol) {
 /** haystack 파일 목록 (설정 파일은 항상 제외). */
 export function collectHaystack(root, options) {
 	const exclude = new Set([resolve(root, CONFIG_FILE), ...options.haystackExclude.map((f) => resolve(root, f))]);
-	const accept = (f) => !f.startsWith(".") && SOURCE_EXTENSIONS.has(extname(f));
+	// 숨김 항목은 걷지 않는다 — `.next` 산출물 · `.claude/worktrees` 의 다른 체크아웃이 증거에 섞이면 없는 이름이 통과한다.
+	const accept = (f) => SOURCE_EXTENSIONS.has(extname(f));
 	const files = [];
-	for (const dir of options.sourceDirs) files.push(...walkFiles(join(root, dir), accept));
+	for (const dir of options.sourceDirs) files.push(...walkFiles(join(root, dir), accept, { skipHidden: true }));
 	for (const file of options.sourceFiles) {
 		const full = join(root, file);
 		if (existsSync(full)) files.push(full);
