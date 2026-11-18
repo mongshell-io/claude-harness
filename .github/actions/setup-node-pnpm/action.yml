@@ -1,0 +1,86 @@
+# mongshell-io 앱 저장소 공용 CI 준비 — Node · pnpm(corepack) · 의존성 설치.
+#
+# 앱 저장소 잡은 `actions/checkout` 다음에 이 한 줄을 부르고 바로 검사 스텝으로 간다. 표준 잡 모양 · checkout 설정 ·
+# workspace 정리 스니펫은 plugins/mongshell-dev/references/ci-setup-wiring.md 가 권위다(claude-harness#50 할 일 2).
+# 내용은 감바우 verify.yml 의 준비 스텝을 기준으로 다섯 저장소(sellcaddie · gambau · a2s · k2sell · m2sell)의 것을 합쳤다.
+#
+# 러너: 조직 공용 self-hosted 맥(라벨 `openclaw-mac`)과 GitHub 호스티드 ubuntu-latest 양쪽에서 돈다. 경로는 `$HOME` ·
+# `$RUNNER_TEMP` · `$RUNNER_NAME` 만 쓴다(호스티드 러너의 RUNNER_NAME 에는 공백이 있어 전부 따옴표로 감싼다).
+#
+# 영향 범위: 이 파일의 변경은 `@main` 으로 부르는 저장소 전부에 **머지 즉시** 적용된다 — 사람이 읽고 머지한다.
+name: setup-node-pnpm
+description: Node(setup-node) + pnpm(corepack, packageManager 필드) + pnpm install --frozen-lockfile (러너 공용 저장소)
+
+inputs:
+  node-version:
+    description: actions/setup-node 에 넘길 Node 버전 (저장소 engines.node 와 맞춘다)
+    default: '26'
+  install:
+    description: "'true' 면 저장소 루트에서 pnpm install --frozen-lockfile --store-dir \"$HOME/.pnpm-store\" 까지 한다. 하위 패키지 설치는 호출 쪽 스텝으로 둔다"
+    default: 'true'
+  corepack-version:
+    description: npm 에서 받을 corepack 패키지 버전 (Dockerfile 과 같은 값). 바꾸면 러너별 캐시 폴더 이름이 바뀌어 새로 깔린다
+    default: '0.36.0'
+
+runs:
+  using: composite
+  steps:
+    # cache 옵션은 쓰지 않는다 — self-hosted 러너는 디스크의 pnpm 저장소(아래 install 의 --store-dir)를 그대로 쓴다.
+    # (호스티드 러너는 잡마다 비어 있어 매번 받는다 — 그 대가로 두 러너의 준비 경로를 하나로 둔다.)
+    - uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    # pnpm 은 corepack 으로 켠다 — packageManager 필드(`pnpm@<버전>`)를 그대로 따르므로 pnpm 버전을 여기 중복 기재하지 않는다.
+    # pnpm/action-setup 을 쓰지 않는 이유: 잡마다 pnpm 을 다시 깔아 10~12초를 썼고(gambau#2132 · sellcaddie#329 실측),
+    # 공용 러너에서는 자체 설치가 `Cannot find module '../lib/cli.js'` 로 깨졌다(k2sell#901). corepack 은 받은 버전을 디스크에
+    # 남겨 두 번째부터 즉시 뜬다.
+    # 심(shim)은 잡의 임시 폴더에, 받은 pnpm 은 러너 이름별 폴더에 둔다 — 같은 맥의 러너 전부(조직 공용 — 모든 저장소)가 사용자
+    # 홈을 함께 쓰므로, 한 폴더를 나눠 쓰다 동시에 다시 깔며 서로의 pnpm 을 지운 사고(gambau#1720)를 처음부터 피한다.
+    # Node 25+ 는 corepack 을 싣지 않아(k2sell#905) corepack 패키지를 러너 이름별 폴더에 한 번 깔고 재사용한다 — `npm install -g` 는
+    # 러너들이 함께 쓰는 setup-node 툴캐시(Node 설치 폴더)를 건드리므로 쓰지 않는다. 버전을 바꾸면 폴더 이름이 바뀌어 새로 깔린다.
+    # 끝의 `pnpm --version` 은 packageManager 의 pnpm 을 이 스텝에서 미리 받아, 받기 실패를 install 이 아니라 여기서 드러낸다.
+    - name: pnpm (corepack)
+      shell: bash
+      env:
+        COREPACK_VERSION: ${{ inputs.corepack-version }}
+      run: |
+        set -euo pipefail
+        if ! printf '%s' "$COREPACK_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+          echo "::error::corepack-version 은 x.y.z 형식이어야 합니다: $COREPACK_VERSION"
+          exit 1
+        fi
+        export COREPACK_HOME="$HOME/.cache/corepack/$RUNNER_NAME"
+        export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+        echo "COREPACK_HOME=$COREPACK_HOME" >> "$GITHUB_ENV"
+        echo "COREPACK_ENABLE_DOWNLOAD_PROMPT=0" >> "$GITHUB_ENV"
+        CLI_ROOT="$HOME/.cache/corepack-cli/$RUNNER_NAME"
+        COREPACK_CLI="$CLI_ROOT/corepack@$COREPACK_VERSION"
+        # 재사용 판정은 실제 실행 성공으로 한다 — bin 링크만 보면 잡 강제 종료(SIGKILL)로 반쯤 깔린 폴더를 계속 "설치됨"으로 쓴다.
+        # 설치는 임시 폴더에 받아 실행을 확인한 뒤 mv 로 옮긴다 — 최종 폴더는 다 깔린 상태로만 생긴다.
+        # 같은 RUNNER_NAME 의 잡은 한 번에 하나라 이 폴더를 다른 잡과 동시에 고치지 않는다.
+        if ! "$COREPACK_CLI/node_modules/.bin/corepack" --version > /dev/null 2>&1; then
+          # 지금 버전이 아닌 폴더(옛 버전 · 중단된 임시 설치)는 지운다 — 버전을 올릴 때마다 쌓이지 않게.
+          for d in "$CLI_ROOT"/corepack@*; do [ "$d" = "$COREPACK_CLI" ] || rm -rf "$d"; done
+          rm -rf "$COREPACK_CLI"
+          tmp="$COREPACK_CLI.tmp.$$"
+          npm install --prefix "$tmp" --no-audit --no-fund --ignore-scripts "corepack@$COREPACK_VERSION"
+          "$tmp/node_modules/.bin/corepack" --version > /dev/null
+          mv "$tmp" "$COREPACK_CLI"
+        fi
+        mkdir -p "$RUNNER_TEMP/corepack-bin"
+        "$COREPACK_CLI/node_modules/.bin/corepack" enable pnpm --install-directory "$RUNNER_TEMP/corepack-bin"
+        echo "$RUNNER_TEMP/corepack-bin" >> "$GITHUB_PATH"
+        "$RUNNER_TEMP/corepack-bin/pnpm" --version
+
+    # lockfile 과 어긋나면 실패시킨다 — CI 가 로컬과 다른 의존성으로 도는 것을 막는다.
+    # 저장소 위치를 러너 사용자 홈에 고정한다. 기본 위치는 (옛) pnpm/action-setup 이 잡마다 다시 까는 경로 밑이라
+    # 매번 비어 있었다(gambau#1715 실측: reused 0 · downloaded 770, install 30초). 같은 맥의 러너들이 함께 쓴다 —
+    # pnpm 저장소는 내용 주소 기반이라 동시 접근에 안전하다.
+    # 남아 있는 node_modules(checkout `clean: false` 로 남긴 것)도 이 명령이 lockfile 에 맞춘다 — 빠진 의존성의 링크는 지우고
+    # 없는 패키지는 다시 만든다. 패키지 **안의 파일**이 바뀐 것은 고치지 않는다 — 의심되면 그 러너의 node_modules 를 지운다.
+    # install 도중 잡이 취소돼도 다음 install 이 복구한다(pnpm 은 `.modules.yaml` 을 맨 끝에 쓴다 — gambau verify.yml 실측 기록).
+    - name: pnpm install
+      if: ${{ inputs.install == 'true' }}
+      shell: bash
+      run: pnpm install --frozen-lockfile --store-dir "$HOME/.pnpm-store"
