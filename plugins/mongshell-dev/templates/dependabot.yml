@@ -1,0 +1,53 @@
+# 의존성 업데이트 PR 을 주기적으로 받는다 — mongshell-io 앱 저장소 공통 정본(claude-harness templates/dependabot.yml).
+# npm 은 minor·patch 를 주 1회 한 PR 로 묶고, major 는 패키지마다 따로 받아 하나씩 검증한다(vitest 계열만 함께 — 서로 peer 다).
+# GitHub Actions 는 메이저까지 월 1회 한 PR 로 묶는다.
+# 보안 업데이트는 저장소 설정의 Dependabot alerts·security updates 를 켜 두면 이 일정과 무관하게 바로 올라온다.
+# 저장소마다 다를 수 있는 것은 두 곳뿐이다 — npm `directories`(자기 lockfile 을 가진 패키지 디렉터리)와 `ignore` 의 저장소 고유 항목.
+version: 2
+updates:
+  - package-ecosystem: npm
+    # 자기 lockfile 을 가진 패키지 디렉터리를 전부 적는다(루트 외 예: /extension · /infra/<worker> · /workers/<name>).
+    # 빠진 디렉터리는 아래 cooldown·묶음 규칙 밖에서 따로 올라오거나 아예 올라오지 않는다.
+    directories:
+      - /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul
+    # 갓 나온 버전은 7일 뒤에 받는다 — PR 이 열리면 CI 가 self-hosted 러너에서 그 코드를 바로 실행한다(보안 업데이트는 예외).
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore(deps)
+    ignore:
+      # TypeScript 메이저는 계획을 세워 저장소들에 함께 올린다 — 한 저장소(또는 한 디렉터리)만 앞서면 버전이 갈린다.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+      # 저장소 고유 항목은 이 아래에 이유 주석과 함께 둔다(예: 정확 고정한 패키지 · patchedDependencies 키로 잡힌 패키지).
+    groups:
+      vitest:
+        patterns:
+          - vitest
+          - "@vitest/*"
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: Asia/Seoul
+    # 갓 나온 액션 버전은 7일 뒤에 받는다 — PR 이 열리면 CI 가 self-hosted 러너에서 그 액션을 바로 실행한다.
+    cooldown:
+      default-days: 7
+    # 액션은 메이저까지 한 PR 로 묶는다 — 서로 맞물려 올라가는 경우가 많고 CI 한 번으로 함께 검증된다.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore(ci)
