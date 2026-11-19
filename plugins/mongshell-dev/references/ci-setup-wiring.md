@@ -5,7 +5,7 @@ non_goals:
   - "Node · corepack · pnpm 준비 로직 자체와 그 이유(사고 기록) — 하네스 `.github/actions/setup-node-pnpm/action.yml` 이 권위"
   - "저장소마다 어떤 검사(lint · typecheck · check:* · test)를 어떤 잡에 둘지 — 각 저장소 verify 워크플로가 권위"
   - "verify 워크플로 이름 · 트리거 · automerge 호출 — `automerge-wiring.md` 가 권위"
-  - "self-hosted 러너 설치 · 운영 — mongshell-io/server-mac `ci-runner/` 가 권위"
+  - "self-hosted 러너 설치 · 운영 — mongshell-io/runner-infra `ci-runner/` 가 권위"
 ---
 
 # CI 준비 배선 (setup-node-pnpm)
