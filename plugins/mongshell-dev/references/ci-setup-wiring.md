@@ -55,6 +55,18 @@ jobs:
 
 - `actions/setup-node` · corepack 스텝을 잡에 따로 두지 않는다 — 두 번 켜면 뒤의 것이 PATH 를 덮어 어느 쪽이 쓰였는지 흐려진다.
 
+## 러너 설명 주석 (self-hosted 풀)
+
+`runs-on: [self-hosted, mongshell-runner]` 를 쓰는 워크플로는 파일마다 첫 `runs-on` 바로 위(또는 러너를 설명하는 잡 주석 묶음)에 아래 두 줄을 **그대로** 둔다.
+
+```yaml
+# 실행 위치: 조직 공용 self-hosted 러너 풀(라벨 `mongshell-runner`). 어느 맥에 몇 개 있는지 · 설치 · 운영은
+# mongshell-io/runner-infra 가 기준이다 — 대수나 설치 경로를 여기에 적지 않는다(러너를 바꿀 때마다 낡는다).
+```
+
+- 러너 대수(「맥북 N대 · 러너 N개」) · 설치 스크립트 경로 · 러너 그룹 · 머신 이름을 워크플로 주석에 옮겨 적지 않는다 — 권위는 mongshell-io/runner-infra 하나다.
+- 저장소 고유의 근거(과금 이력 · 잡 분리 · timeout 이유 · 이슈 참조 · 지난 사고 기록)는 두 줄 아래에 그대로 둔다.
+
 ## 선택: node_modules 를 남기는 workspace 정리 (self-hosted)
 
 checkout 기본값(`clean: true`)은 `git clean -ffdx` 로 러너의 `node_modules` 까지 지워 install 이 매번 전부 다시 링크한다(gambau 실측: 잡 약 105초 중 약 28초). 루트 `node_modules` 를 잡 사이에 남기려면 checkout 을 `clean: false` 로 두고 **바로 다음에** 아래 정리 스텝을 둔다. checkout 설정과 짝이라 action 에 넣지 않는다 — 저장소마다 남길 폴더가 다를 수 있다.
