@@ -1,5 +1,5 @@
 ---
-role: "mongshell-io 앱 저장소의 브라우저 익스텐션 구조 표준 — 폴더(`extension/`) · 스택(WXT 0.21.x) · 빌드 결과물 폴더(`extension/dist`) · 아이콘 · 스크립트 이름 · Chrome 로드 안내."
+role: "mongshell-io 앱 저장소의 브라우저 익스텐션 구조 표준 — 폴더(`extension/` · 둘 이상이면 `extension-<용도>/`) · 스택(WXT 0.21.x) · 빌드 결과물 폴더(`extension/dist`) · 아이콘 · 스크립트 이름 · Chrome 로드 안내."
 kind: operational
 non_goals:
   - "익스텐션 기능 · 매니페스트 권한(permissions · host_permissions) · content script 범위 — 각 저장소가 권위"
@@ -14,8 +14,28 @@ non_goals:
 
 ## 위치
 
-- 저장소 루트의 **`extension/` 하나**. 익스텐션이 둘 이상 폴더로 흩어지지 않는다.
+- 저장소 루트의 **`extension/`**. 익스텐션 하나는 한 폴더에만 있다 — 여러 폴더로 흩어지지 않는다.
 - 자체 `package.json` 과 pnpm lockfile(`extension/pnpm-lock.yaml`)을 가진 하위 패키지다. 그래서 dependabot npm `directories` 에 `/extension` 이 들어간다(`references/repo-templates.md`).
+
+### 익스텐션이 둘 이상인 저장소
+
+예: auction2sell 의 내부용 `extension/` 과 배포용 `extension-public/`.
+
+- 폴더 이름: 기본은 `extension/`, 추가분은 **`extension-<용도>/`**(예: `extension-public/`).
+- **폴더마다 이 문서 전체를 따른다** — 자체 `package.json` · lockfile · WXT · `dist`/`dist-dev` · `public/icon/` 네 장 · 같은 스크립트 이름 · `README.md` 첫 절의 Chrome 로드 안내. 아래 절의 `extension/` 은 각 폴더 이름으로 바꿔 읽는다.
+- dependabot npm `directories` 에 폴더마다 한 줄씩(`/extension` · `/extension-public` …) 넣는다.
+- **앱 코드(컴포넌트 · 엔진)를 공유해야 하면 복사하지 않는다.** `wxt.config.ts` 의 vite `resolve.alias` 로 저장소 루트 `src/` 를 가져온다. 별도 번들러(esbuild 등)로 따로 묶지 않는다.
+  ```ts
+  import { fileURLToPath } from "node:url";
+  export default defineConfig({
+    // ...위 표준 항목
+    vite: () => ({
+      resolve: { alias: { "@app": fileURLToPath(new URL("../src", import.meta.url)) } },
+    }),
+  });
+  ```
+  alias 이름은 앱이 쓰는 것(예: 앱의 `@/`)과 맞추면 공유 코드 안의 import 가 그대로 풀린다.
+- 앱 화면을 함께 쓰는 익스텐션은 **앱과 같은 Tailwind 설정 · 같은 버전**을 쓴다(설정은 루트 것을 가져오거나 루트 설정을 확장). 버전이 갈리면 같은 컴포넌트가 다르게 그려진다.
 
 ## 스택
 
@@ -66,18 +86,23 @@ export default defineConfig({
 
 ## 대조
 
-저장소 루트에서 실행한다. 빠진 항목이 있으면 표준과 다른 것이다.
+저장소 루트에서 실행한다. 익스텐션 폴더(`extension/` · `extension-*/`)마다 돈다. 빠진 항목이 있으면 표준과 다른 것이다.
 
 ```bash
-ls extension/package.json extension/pnpm-lock.yaml extension/wxt.config.ts extension/src >/dev/null
-grep -E '"wxt": *"[~^]?0\.21\.' extension/package.json
-# 따옴표는 " · ' 어느 쪽이든 된다
-for p in "srcDir: *[\"']src[\"']" "outDir: *[\"']dist[\"']" "outDirTemplate: *[\"']\.\./dist\{\{modeSuffix\}\}[\"']" 'dist-dev'; do
-  grep -qE "$p" extension/wxt.config.ts || echo "빠짐: $p"
-done
-ls extension/public/icon/{16,32,48,128}.png
-jq -r '.scripts | keys[]' extension/package.json | grep -xE 'dev|build|zip|typecheck|test|test:run' | wc -l   # 6
-for f in extension/dist/manifest.json extension/dist-dev/manifest.json extension/.wxt/tsconfig.json; do
-  git check-ignore -q "$f" || echo "git 제외 안 됨: $f"
+for d in extension extension-*; do
+  [ -d "$d" ] || continue
+  echo "== $d"
+  ls "$d"/package.json "$d"/pnpm-lock.yaml "$d"/wxt.config.ts "$d"/src >/dev/null
+  grep -qE '"wxt": *"[~^]?0\.21\.' "$d"/package.json || echo "WXT 0.21.x 아님"
+  # 따옴표는 " · ' 어느 쪽이든 된다
+  for p in "srcDir: *[\"']src[\"']" "outDir: *[\"']dist[\"']" "outDirTemplate: *[\"']\.\./dist\{\{modeSuffix\}\}[\"']" 'dist-dev'; do
+    grep -qE "$p" "$d"/wxt.config.ts || echo "빠짐: $p"
+  done
+  ls "$d"/public/icon/{16,32,48,128}.png >/dev/null
+  n=$(jq -r '.scripts | keys[]' "$d"/package.json | grep -cxE 'dev|build|zip|typecheck|test|test:run')
+  [ "$n" = 6 ] || echo "스크립트 이름 $n/6"
+  for f in "$d"/dist/manifest.json "$d"/dist-dev/manifest.json "$d"/.wxt/tsconfig.json; do
+    git check-ignore -q "$f" || echo "git 제외 안 됨: $f"
+  done
 done
 ```
