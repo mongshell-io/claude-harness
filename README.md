@@ -101,6 +101,7 @@ claude-harness/
 │   │                                 #   automerge-wiring(앱 저장소의 공용 automerge 호출 배선)
 │   │                                 #   ci-setup-wiring(앱 저장소 CI 잡의 setup-node-pnpm 배선)
 │   │                                 #   repo-templates(저장소 설정 정본 적용·대조, biome·tsconfig 공통 값 표)
+│   │                                 #   extension-structure(브라우저 익스텐션 구조 표준 — extension/ · WXT · dist · 아이콘)
 │   ├── templates/                    #   앱 저장소 설정 정본 — dependabot.yml·pull_request_template.md·claude-settings.json
 │   └── scripts/                      #   decisions 인덱스·버전 검증 · 위험 경로 패턴(risk-paths.sh)
 ├── plugins/mongshell-ops/            # 운영 도구 (플러그인 채널 전용)
