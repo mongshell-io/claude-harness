@@ -82,7 +82,7 @@ flowchart LR
 
 **Reviewer 라우팅의 단일 권위**. 다른 SKILL/agent 본문은 본 표만 참조합니다.
 
-변경 파일을 입력 도메인으로 분기 — caller(`/qa`, developer self-round, `/review-comments` 등) 가 동등하게 참조하는 단일 권위.
+변경 파일을 입력 도메인으로 분기 — caller(`/qa`, `/plan` 의 라운드 리뷰)가 동등하게 참조하는 단일 권위.
 
 | 입력 도메인 | Reviewer | 상태 |
 |---|---|---|
@@ -180,7 +180,7 @@ skill / agent 가 참조하는 프로젝트 권위 문서(`docs/**`, 영역별 `
 
 ## 호출 방식
 
-- **절차 스킬** (`/create-issue` · `/plan` · `/qa` · `/pr` · `/review-comments` · `/release`) — 명시 호출 전용. 개발 흐름에 영향을 주므로 우발적 실행을 막는다.
+- **절차 스킬** (`/create-issue` · `/plan` · `/qa` · `/pr` · `/review-comments` · `/release`) — 사용자의 명시 호출로 시작한다. 개발 흐름에 영향을 주므로 모델이 상황을 보고 스스로 시작하지 않는다. 다른 절차 스킬이 자기 절차의 한 단계로 부르는 것(`/pr` 이 통과 기록이 없을 때 `/qa --branch` 를, `/plan` 이 이슈화할 때 `/create-issue` 를)은 각 SKILL.md 가 정한 대로다.
 - **규율 스킬** (`verification-before-completion` · `systematic-debugging`) — 상황이 트리거라 명시 호출 없이 적용한다. 각 SKILL.md 의 description 이 적용 조건을 말하고, 메인 세션과 developer 가 그 상황(완료 주장 직전 · 버그를 만났을 때)에서 스스로 따른다. 판단 기준과 순서를 더할 뿐 새 실행 흐름(위임 · commit · 외부 발신)을 열지 않으므로 우발적 실행의 위험이 없다 — 위임 여부는 여전히 루트 `CLAUDE.md` 오케스트레이터 규칙이 정한다.
 
 규율 스킬은 [obra/superpowers](https://github.com/obra/superpowers) (MIT) 에서 옮겨 왔다 — 라이선스 고지는 [LICENSE.superpowers](./LICENSE.superpowers).
@@ -189,7 +189,7 @@ skill / agent 가 참조하는 프로젝트 권위 문서(`docs/**`, 영역별 `
 
 이 하네스 본문에 들어가면 안 되는 도메인 키워드. 새 agent/skill 작성 또는 기존 파일 수정 시 참조.
 
-**적용 범위**: 임의의 소비 프로젝트로 배포되는 개발 하네스(이 플러그인) 한정. 같은 SSOT 저장소의 다른 플러그인은 특정 운영 환경을 잇는 것이 목적이라 채널·봇 ID 같은 개인 운영 값을 담을 수 있다.
+**적용 범위**: 임의의 소비 프로젝트에서 그대로 동작해야 하는 본문 — 이 플러그인의 `agents/` · `skills/` · 이 README, 그리고 스킬 · 에이전트가 읽는 `references/` 문서(이식 계약 등). 대상이 아닌 것은 둘이다. (1) 이 플러그인의 **조직 표준 문서** — 스킬 · 에이전트가 읽지 않고 저장소를 맞출 때 여는 배선 · 설정 문서와 `templates/`, 상시 코어 블록의 프로젝트 값 기본치. mongshell-io 저장소들의 공통 값을 적는 것이 목적이라 저장소 이름 · 스택 · 설정 값을 그대로 담는다. (2) 같은 SSOT 저장소의 다른 플러그인 — 특정 운영 환경을 잇는 것이 목적이라 채널·봇 ID 같은 개인 운영 값을 담을 수 있다.
 
 - **영역별 경로** — 예: `docs/`, `src/lib/`, `src/components/`, `src/app/api/` 등 프로젝트 종속 경로. 대신 "영역별 `CLAUDE.md`" / "프로젝트 디렉토리" 등으로 일반화.
 - **빌드/검증 명령어** — 프로젝트 스택 종속 명령 (`pnpm test:run`, `pnpm typecheck`, `pnpm lint`, `pnpm db:push`, `pnpm build` 등). 대신 "테스트 명령", "typecheck 명령", "lint 명령" 등 역할 표현 + "구체 명령은 `docs/development.md` 또는 영역별 `CLAUDE.md` 권위" 위임.

@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 입력 도메인
 
-`**/*.md` 중 하네스 루트(하네스 SSOT 저장소에만 있다 — `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부. 정의 권위는 라우팅 섹션) 밖의 모든 .md 파일. 소비 프로젝트에는 하네스 루트가 없으므로 모든 .md 가 이 도메인이다. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md` 의 "Reviewer 라우팅" 섹션이 단일 권위.
+`**/*.md` 중 하네스 루트(하네스 SSOT 저장소에만 있다 — `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부. 정의 권위는 라우팅 섹션) 밖의 모든 .md 파일. 소비 프로젝트에는 하네스 루트가 없으므로 모든 .md 가 이 도메인이다. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md`(`${CLAUDE_PLUGIN_ROOT}/README.md` — 아래에서 「하네스 `README.md`」 는 모두 이 파일) 의 "Reviewer 라우팅" 섹션이 단일 권위.
 
 **검증 분기**: frontmatter(`---` 블록) 가 있는 파일만 권위 검증(role/kind/non_goals 정합성, cross-doc SSOT) 대상. frontmatter 가 없는 .md 는 입력 도메인에 포함되지만 본문 검증은 skip (워크플로우 2 참조).
 
@@ -33,7 +33,8 @@ tools: Read, Grep, Glob, Bash
 - 하네스 `references/required-docs.md` 의 "Frontmatter 스키마" 섹션만 read (per-doc contract 섹션은 검증 키에 활용 안 됨):
   ```bash
   # 설치된 플러그인의 required-docs — 이 경로는 에이전트 본문이 로드될 때 실제 경로로 치환된다 (셸 환경변수가 아니다)
-  sed -n '/^## Frontmatter 스키마/,/^---/p' "${CLAUDE_PLUGIN_ROOT}/references/required-docs.md"
+  # 절 끝은 다음 `## ` 제목 — `---` 로 끊으면 절 안 YAML 예시의 `---` 에서 먼저 멈춘다
+  awk '/^## Frontmatter 스키마/{p=1; print; next} p && /^## /{exit} p' "${CLAUDE_PLUGIN_ROOT}/references/required-docs.md"
   ```
 
 영역별 CLAUDE.md 는 호출 시점에 자동 로드됩니다.
@@ -65,7 +66,8 @@ frontmatter 가 있는데 3 필드(`role` / `kind` / `non_goals`)가 다 안 채
 권위 풀 전체의 frontmatter 를 인덱스로 훑어 대조 후보를 좁힌다:
 
 ```bash
-fd ".*\.md" docs/ -x head -n 30  # frontmatter 영역만 빠르게 스캔
+# 권위 풀(frontmatter 있는 .md)의 frontmatter 만 출력 — 입력 도메인 전체(루트 · 영역별 CLAUDE.md 포함)
+git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" ] && { echo "== $f"; sed -n '2,/^---$/p' "$f"; }; done
 ```
 
 - 변경된 문서는 본문을 읽는다.
@@ -187,7 +189,7 @@ fd ".*\.md" docs/ -x head -n 30  # frontmatter 영역만 빠르게 스캔
 - frontmatter 인덱스 전체 + 도메인 겹치는 후보 본문(보수적 recall) 적재 (변경된 문서만 보지 말 것 — cross-doc 검증 핵심)
 - 각 위반에 `파일:line` 명시
 - 본문 인용은 짧게 (1~2 문장)
-- 위반 키(role-violation / kind-mismatch / non-goals-overlap / cross-authority-overlap / ssot-duplicate / declaration-mismatch / contradiction / adr-content-mismatch / exception-clause-accumulation)를 각 finding 머리에 `[키]` 형태로 명시
+- 위반 키(워크플로우 4 의 목록 중 하나)를 각 finding 머리에 `[키]` 형태로 명시
 - frontmatter 가 없는 .md 는 검증 대상 아님 (보고에만 "skip" 으로 명시)
 
 **금지:**

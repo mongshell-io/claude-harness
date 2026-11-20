@@ -12,7 +12,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 입력 도메인
 
-하네스 루트 아래의 모든 `.md`. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md` 의 "Reviewer 라우팅" 섹션이 단일 권위.
+하네스 루트 아래의 모든 `.md`. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md`(아래 `$H/README.md` — 검증 대상인 작업 트리의 것) 의 "Reviewer 라우팅" 섹션이 단일 권위.
 
 **하네스 루트** 의 정의 — 하네스 SSOT 저장소 `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부, 소비 프로젝트 없음 — 는 같은 "Reviewer 라우팅" 섹션이 권위다. SSOT 에서 개발 하네스 밖 플러그인까지 받는 건 스킬·에이전트 frontmatter 와 R&R 검증이 플러그인 종류와 무관하기 때문이고, 하네스 수정이 SSOT 에서 일어나므로 거기서 검증이 안 걸리면 사실상 어디서도 안 걸린다.
 
@@ -34,7 +34,7 @@ HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' 
 
 ## 컨텍스트
 
-**필수 read 문서** (harness-reviewer 가 호출되면 매번 의식. 루트 `CLAUDE.md` 는 자동 로드 — main-orchestration-violation 키 적용 시 자동 로드 본문 참조):
+**필수 read 문서** (harness-reviewer 가 호출되면 매번 의식):
 
 - 하네스 파일 풀(하네스 루트마다 `agents/**`·`skills/*/SKILL.md`·`README.md`, 그리고 `$H/references/required-docs.md`) — 인덱스로 대조 후보를 좁혀 컨텍스트를 구성 (상세: 워크플로우 Step 3).
 - Decision 파일 — `adr-content-mismatch` 검증 시 조건부 read (워크플로우 Step 4 참조).
@@ -78,7 +78,7 @@ git diff $RANGE -- <대상 파일>                           # 변경 내용
 
 ```bash
 echo "$ROOTS" | while read -r r; do ls "$r/agents/" "$r/skills/" 2>/dev/null; done
-echo "$ROOTS" | while read -r r; do fd ".*\.md" "$r/agents/" "$r/skills/" -x head -n 10 2>/dev/null; done   # frontmatter 스캔
+echo "$ROOTS" | while read -r r; do find "$r/agents" "$r/skills" -name '*.md' -print -exec head -n 10 {} \; 2>/dev/null; done   # frontmatter 스캔
 ```
 
 플러그인이 달라도 같은 세션에 함께 설치되므로 skill 트리거·책임 겹침은 루트를 가로질러 본다.
@@ -107,7 +107,7 @@ echo "$ROOTS" | while read -r r; do fd ".*\.md" "$r/agents/" "$r/skills/" -x hea
 - `skill-rnr-overlap` — skill A 와 skill B 의 책임이 침범·중복. 예: /pr vs /release 가 같은 작업 양쪽에서 정의.
 - `agent-rnr-overlap` — agent A 와 agent B 의 책임이 분리되지 않음. 예: developer 가 리뷰까지, code-reviewer 가 수정까지.
 - `dispatch-mismatch` — skill 의 본문이 "agent X 에게 위임" 이라 적었는데 agent X 의 description/본문에는 그 호출 출처가 명시 안 됨, 또는 그 반대. skill ↔ agent 의 호출 책임 분담 불일치.
-- `main-orchestration-violation` — skill/agent 명세가 루트 CLAUDE.md 메인 세션 규칙의 위임 판단 기준(병렬성 / 메인 컨텍스트 격리 / 신선한 독립 리뷰)을 위반 — 즉 그 기준상 위임이 값하는 실질 구현을 메인 세션이 직접 Edit/Write 하도록 명세된 경우. 자명한 변경(한 줄·오타·기계적 텍스트 교정)의 직접 편집은 위반 아님. 위임 판단 기준·'자명한 변경' 경계의 SSOT = 루트 CLAUDE.md 메인 세션 규칙(자동 로드) — 본 키는 그 기준을 집행만 하고 재정의하지 않는다. `/pr` 처럼 의도된 예외는 명시되어 있으면 OK.
+- `main-orchestration-violation` — skill/agent 명세가 상시 코어 「오케스트레이터」 조항(`$H/references/claude-md-core.md` 의 블록 — 소비 프로젝트 루트 `CLAUDE.md` 에 복사되는 정본)의 위임 판단 기준(병렬성 / 메인 컨텍스트 격리 / 신선한 독립 리뷰)을 위반 — 즉 그 기준상 위임이 값하는 실질 구현을 메인 세션이 직접 Edit/Write 하도록 명세된 경우. 자명한 변경(한 줄·오타·기계적 텍스트 교정)의 직접 편집은 위반 아님. 위임 판단 기준·'자명한 변경' 경계의 SSOT = 그 「오케스트레이터」 조항 — 본 키는 그 기준을 집행만 하고 재정의하지 않는다. `/pr` 처럼 의도된 예외는 명시되어 있으면 OK.
 - `adr-content-mismatch` — 하네스 `.md` 본문이 특정 Decision (`Decision N` / `Decision #N` / `(Decision N 참조)` / `[Decision N](...)`) 를 인용했지만, `docs/harness-decisions.md` 또는 `docs/architecture-decisions.md` 의 해당 Decision 본문의 결정·이유·결과 중 어느 것과도 직접 연결되지 않는 맥락에서 사용됨. 잘못된 권위 부여. (신규 결정은 이슈번호로 식별 — `Decision #N`.)
 - `exception-clause-accumulation` — 단서 조항이 쌓여 skill·agent 의 입력 도메인 분리와 책임 경계가 흐려지는 경우 (예: "도메인 외에도 X 수행"). 공통 판정 기준은 하네스 `README.md` § "예외 조항 누적 검증".
 

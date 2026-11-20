@@ -149,7 +149,7 @@ GitHub Release 에 사용할 notes 문자열을 메모리상에서 조립한다.
 
 - Changes 는 `gh issue list --milestone "<식별자>" --state closed --json title,labels` 로 자동 수집하고 `type` 라벨(`type:feat` / `type:fix` / `type:chore` / `type:refactor`)로 그룹핑한다 (라벨 3축 정의 권위: create-issue 스킬).
 - 마일스톤이 없으면 Changes 절을 생략하고 요약 줄만 포함한다.
-- **도입 버전 드리프트 검사 (read-only — 스크립트)**: Decision 의 `**도입**` 라인은 **생성물**이고, 채우는 주체는 `/qa` 의 write 게이트다 (`--write` — 릴리스 다음에 오는 아무 PR 이 실어 나른다). `/release` 는 그 게이트가 돌았는지만 읽기 전용으로 확인한다.
+- **도입 버전 드리프트 검사 (read-only — 스크립트)**: Decision 의 `**도입**` 라인은 **생성물**이고, 채우는 주체는 `/qa` 의 write 게이트다 (`--write` — 릴리스 다음에 오는 아무 PR 이 실어 나른다). `/release` 는 그 게이트가 돌았는지만 읽기 전용으로 확인한다. **결정 문서(`docs/architecture-decisions.md` 또는 `docs/harness-decisions.md`)가 있을 때만 실행한다** — 하나도 없으면 스크립트가 문서 부재를 오류(exit 1)로 내 STALE 과 구분되지 않으므로 이 검사를 건너뛴다.
   ```bash
   node "${CLAUDE_PLUGIN_ROOT}/scripts/check-decision-versions.mjs"
   ```

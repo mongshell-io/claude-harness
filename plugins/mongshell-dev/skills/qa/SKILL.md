@@ -10,7 +10,7 @@ description: >-
 
 # /qa
 
-작업 마무리 직전 검증 단일 진입점. 변경 도메인을 매칭해 toolchain 검증(bash)과 reviewer(Agent)들을 병렬 실행하고, 결과를 공통 분류 등급(하네스 README § "공통 분류 등급")으로 통일 분류해 리포트한다. **어떤 검증이 언제 도는지의 단일 권위 = Step 1 조건표** (옵션 정의는 Step 0 — 다른 곳에 매트릭스를 복제하지 않는다). .md 파일의 frontmatter 깨짐은 로딩 시점에 자연 검출된다.
+작업 마무리 직전 검증 단일 진입점. 변경 도메인을 매칭해 toolchain 검증(bash)과 reviewer(Agent)들을 병렬 실행하고, 결과를 공통 분류 등급(`${CLAUDE_PLUGIN_ROOT}/README.md` § "공통 분류 등급" — 아래에서 「하네스 README」 는 이 파일)으로 통일 분류해 리포트한다. **어떤 검증이 언제 도는지의 단일 권위 = Step 1 조건표** (옵션 정의는 Step 0 — 다른 곳에 매트릭스를 복제하지 않는다). .md 파일의 frontmatter 깨짐은 로딩 시점에 자연 검출된다.
 
 ## 언제 호출하는가
 
@@ -331,6 +331,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - schema 정합성 (마이그레이션 + ERD 산출물): ✅ Passed / ❌ Failed / ⏭️ DB schema 경로 변경 없음 — 스킵
 - decisions 인덱스 정합: ✅ Passed / ❌ Failed (exit 1 — MISSING/DANGLING/중복/NO_SECTION) / ⏭️ decisions 파일 변경 없음 — 스킵
 - Decision 도입 버전: ✅ 확정할 것 없음 / 🔧 N건 자동 확정 — 이번 커밋에 포함하세요 (`파일:line → vX.Y.Z` 목록) / ⏭️ 결정 문서 없음 — 스킵
+- harness-core 마커: ✅ 정본과 같음 / ⚠️ 낡음 (`루트 CLAUDE.md = … / 정본 = …`) / ⏭️ 마커 없음 — 스킵
 - browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
 - `code-reviewer`: ✅ 완료 / ⏭️ `--skip-code-review` 사용자 명시 스킵
 - REVIEW.md 트리거: 공통: C1 / 없음 · 프로젝트: R2 · R5 / 없음 / 해당 없음 (파일 없음) / 해당 없음 (origin/main ref 없음) (두 칸 따로, 예: `공통: C1 · 프로젝트: 해당 없음 (파일 없음)`) / ⏭️ code-reviewer 미호출 — 스킵 (code-reviewer 결과 그대로, fetch 실패 문구가 있으면 덧붙임 — `references/review-checklist.md`)
@@ -499,7 +500,7 @@ marker 내용은 Step 5 와 동일한 형식이다 — 개수는 승계 도메�
 ## 제약
 
 - 검증만 수행한다. 코드 자동 수정 X. 수정은 사용자 결정 후 `developer` 서브에이전트에 위임한다.
-- 의도된 자동화 예외(node_modules 자동 설치, schema 정합성 자동 실행, decisions 도입 버전 자동 확정)는 Step 2 참조. 셋 다 **결정론적 생성물의 재생성**이지 판단이 필요한 수정이 아니다.
+- 의도된 자동화 예외(node_modules 자동 설치 · decisions 도입 버전 자동 확정 = Step 2, schema 정합성 자동 실행 = Step 1 조건표 · Step 3a). 셋 다 **결정론적 생성물의 재생성**이지 판단이 필요한 수정이 아니다.
 - 메인 세션이 절차를 오케스트레이션한다. QA 검증 효과:
   - 코드 변경 (프로젝트 toolchain 입력) 은 `developer` 서브에이전트에 위임
   - 문서 / 하네스 편집은 X — Agent 호출 + bash 검증만 수행 (예외: 위 도입 버전 자동 확정 — 모델이 아니라 스크립트가 결정론적으로 쓴다)

@@ -13,9 +13,10 @@
 #   기준 브랜치 ref 가 없으면(오프라인 · 새 저장소) 작업 트리 CLAUDE.md 를 읽는다.
 #   HUMAN 의 경로 집합과 deny_paths 의 갈래 집합이 다르면 stderr 로 경고한다
 #   (정책 노브 = 권위, deny_paths = 집행 — 드리프트 감지만, 판정은 사람).
-#   deny_paths 는 작업 트리의 호출 파일에서 읽는다(CLAUDE.md 와 달리 기준 브랜치를 보지 않는다) — 호출 파일을
-#   바꾸는 PR 은 공용 automerge 가 항상 거부하므로 PR 이 이 값을 고쳐 자동 머지 범위를 넓힐 수 없고, 여기서는
-#   드리프트 경고에만 쓰인다.
+#   deny_paths 는 작업 트리의 호출 파일에서 읽는다(CLAUDE.md 와 달리 기준 브랜치를 보지 않는다). 쓰이는 곳은
+#   드리프트 경고와, 정책 노브 문장이 없을 때의 HUMAN 폴백이다. 호출 파일을 바꾸는 PR 은 공용 automerge 가
+#   항상 거부하므로(.github/workflows/) PR 이 이 값을 고쳐도 자동 머지 범위는 넓어지지 않는다 — 달라지는 것은
+#   marker 에 찍히는 「사람이 머지」 줄뿐이다.
 #
 # 경로 → ERE: `/` 로 끝나면 디렉토리 접두(`dir/`), 아니면 파일(`file$`). 메타문자는 이스케이프.
 #   POSIX ERE 만 쓴다 — 러너·로컬의 BSD/GNU grep 이 같게 읽도록.
@@ -51,7 +52,7 @@ segment() {
 }
 
 # 구간 → 백틱 경로(줄당 하나). 괄호 설명 안의 백틱은 정본 규약상 쓰지 않는다 (claude-md-core.md 안내).
-#   자리표시(`<`)가 남아 있으면 exit 3.
+#   자리표시(`<`)가 남아 있으면 fail (exit 1).
 paths_of() {
 	local text="$1" head="$2" seg rc=0
 	seg=$(printf '%s' "$text" | segment "$head") || rc=$?
