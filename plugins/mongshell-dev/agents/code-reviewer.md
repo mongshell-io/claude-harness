@@ -23,10 +23,10 @@ tools: Read, Grep, Glob, Bash
 
 **필수 read 문서** (code-reviewer 가 호출되면 매번 의식. 루트 / 영역별 `CLAUDE.md` 는 자동 로드):
 
-- `docs/architecture-decisions.md` — 활성 Decision 집합 파악. `## 상태 인덱스` 섹션이 그 목록이라 대개 거기서 시작하면 충분하다.
+- `docs/architecture-decisions/` — 지금 유효한 Decision 집합(Decision 하나가 파일 하나). 제목 목록(`grep -m1 '^# Decision' docs/architecture-decisions/*.md`)에서 시작하면 대개 충분하다. `archive/` 는 폐기된 기록이라 근거로 읽지 않는다.
 - `docs/architecture.md` — 인증·외부 의존성 정책 위반 점검 시 (Tech Stack / Data Flow / Auth / Infrastructure)
 
-**Decision 본문 읽기**: 상태 인덱스로 후보를 좁힌 뒤, 변경 파일 도메인과 겹치는 active Decision 과 diff·영역별 `CLAUDE.md` 가 직접 인용한(`Decision N` / `Decision #N`) Decision 의 본문을 읽는다. 판정에 필요하면 더 읽어도 된다 — 습관적인 전체 덤프만 피하면 된다.
+**Decision 본문 읽기**: 제목 목록으로 후보를 좁힌 뒤, 변경 파일 도메인과 겹치는 Decision 과 diff·영역별 `CLAUDE.md` 가 직접 인용한(`Decision N` / `Decision #N`) Decision 의 파일(`docs/architecture-decisions/<식별자에서 # 를 뗀 것>.md`)을 읽는다. 판정에 필요하면 더 읽어도 된다 — 습관적인 전체 덤프만 피하면 된다.
 
 ## 워크플로우
 
@@ -164,7 +164,7 @@ else git show origin/main:REVIEW.md 2>/dev/null || echo "(해당 없음 (파일 
 - 요약 첫 줄은 발견 개수로 시작 — 없으면 "고칠 것 없음" 명시
 - 영역별 `CLAUDE.md` 운영 규약 위반 여부 점검
 - 기준 브랜치 `REVIEW.md` 의 항목 중 트리거된 것만 검사하고 그 번호를 리포트에 적기
-- Architecture Decisions 위반 여부 점검 (영역별 `CLAUDE.md` 및 `docs/architecture-decisions.md` 상태 인덱스 + 관련 active Decision 본문 참조)
+- Architecture Decisions 위반 여부 점검 (영역별 `CLAUDE.md` 및 `docs/architecture-decisions/` 의 제목 목록 + 관련 Decision 파일 참조)
 - 정적 분석 중 발견한 명백한 lint / 타입 위반은 P0 후보로 보고 (`${CLAUDE_PLUGIN_ROOT}/README.md` "검증 명령 실행 책임" 참조 — 검증 명령 실행은 caller, 본 에이전트는 정적 분석 결과만 보고)
 
 **금지:**

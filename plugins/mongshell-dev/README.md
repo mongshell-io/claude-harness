@@ -142,9 +142,9 @@ flowchart LR
 `doc-reviewer` 와 `harness-reviewer` 가 공유하는 `adr-content-mismatch` 검증 알고리즘. 각 reviewer 는 아래 절차를 따르되, **read 대상 파일과 검출 도메인만 자기 영역을 채운다**.
 
 1. 정규식 `Decision (#?\d+(?:-\d+)?)` 으로 변경 .md 본문에서 Decision 참조 검출 — 레거시 순번(`Decision 76`)과 신규 이슈 식별자(`Decision #992`)를 모두 잡고, 캡처 그룹은 `#` 를 포함한다.
-2. 참조가 1개 이상 발견된 경우에만 `<read-target>` 을 read (조건부 — 참조 없으면 read 불필요).
+2. 참조가 1개 이상 발견된 경우에만, 참조된 Decision 의 파일(`<read-target>/<식별자에서 # 를 뗀 것>.md`)을 read (조건부 — 참조 없으면 read 불필요).
 3. 각 참조마다:
-   - **존재성**: `<read-target>` 에 `## Decision <참조 식별자>` 헤더 존재하는가 (`#` 접두 포함해 그대로 대조 — 신규는 `## Decision #992`). 없으면 **P0** (`존재하지 않는 Decision`).
+   - **존재성**: `<read-target>` 폴더 바로 아래에 그 파일이 있고 첫 줄이 `# Decision <참조 식별자>:` 인가 (`#` 접두까지 그대로 대조 — `Decision #992` 는 `992.md` 의 `# Decision #992:`). 폴더 바로 아래에도 `archive/` 에도 없으면 **P0** (`존재하지 않는 Decision`). `archive/` 에만 있으면 **P1** (`폐기된 Decision 인용 — 대체한 Decision 으로 바꾸거나 인용 제거 권장`) — 이 경우 맥락 정합성은 보지 않는다.
    - **맥락 정합성**: 참조한 본문 단락이 해당 Decision 본문의 결정·이유·결과 중 하나와 의미적으로 연결되는가. 무관하면 **P1** (`맥락 부적합 — 의도된 Decision 추정 또는 인용 제거 권장`).
    - **부분 연결** (Decision 본문의 부수 문장과 일치하지만 핵심과 거리감): false positive 회피 차원에서 `adr-content-mismatch` 로 잡지 않음.
 4. 다중 참조 (`Decision 2 / Decision 8` 처럼) 시 각 Decision 독립 판정. 하나라도 맥락 불일치면 어느 N 이 문제인지 명시.
@@ -154,8 +154,8 @@ flowchart LR
 
 | reviewer | read-target | 검출 도메인 |
 |---|---|---|
-| `doc-reviewer` | `docs/architecture-decisions.md` — 인용이 `harness-decisions.md` 를 파일 이름과 함께 밝혔으면 그 인용만 `docs/harness-decisions.md` (판정 규칙은 doc-reviewer 본문) | `**/*.md` 중 하네스 루트 밖 |
-| `harness-reviewer` | `docs/harness-decisions.md` + `docs/architecture-decisions.md` (양쪽 — 같은 식별자가 둘 다에 있으면 doc-reviewer 본문의 표기 규칙) | 하네스 루트 아래 `**/*.md` |
+| `doc-reviewer` | `docs/architecture-decisions/` — 인용이 `harness-decisions` 를 이름과 함께 밝혔으면 그 인용만 `docs/harness-decisions/` (판정 규칙은 doc-reviewer 본문) | `**/*.md` 중 하네스 루트 밖 |
+| `harness-reviewer` | `docs/harness-decisions/` + `docs/architecture-decisions/` (양쪽 — 같은 식별자가 둘 다에 있으면 doc-reviewer 본문의 표기 규칙) | 하네스 루트 아래 `**/*.md` |
 
 ---
 

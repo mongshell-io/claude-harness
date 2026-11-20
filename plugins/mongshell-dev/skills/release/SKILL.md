@@ -297,4 +297,4 @@ gh api -X PATCH repos/{owner}/{repo}/milestones/{N} -f state=closed
 - git tag · GitHub Release · milestone 은 **본 스킬이 단일 동기화 경로** — 직접 `git tag` / `gh release create` / milestone close 금지.
 - **릴리스 효과: origin/main 태깅 + gh release/milestone close. main 에 push 하지 않는다** — PR squash merge 가 origin/main 을 갱신하는 유일한 경로다.
 - 코드 편집은 이 스킬 범위 외. **파일 편집 없음** — 릴리스가 커밋을 만들지 않는다 (버전 SSOT = git tag max — 파일에 버전을 쓰면 SSOT 가 갈라진다). `package.json version` 은 `0.0.0` 동결, 문서(.md) 편집도 없다.
-- `docs/architecture-decisions.md` / `docs/harness-decisions.md` 는 이 스킬의 수정 대상이 아니다. 결정 문서에는 버전을 적지 않으므로 릴리스 뒤에 채울 것도 없다.
+- `docs/architecture-decisions/` / `docs/harness-decisions/` 는 이 스킬의 수정 대상이 아니다. 결정 문서에는 버전을 적지 않으므로 릴리스 뒤에 채울 것도 없다.

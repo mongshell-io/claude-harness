@@ -22,7 +22,7 @@ tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 **필수 read 문서** (architect 가 호출되면 매번 의식. 루트 / 영역별 `CLAUDE.md` 는 자동 로드):
 - `docs/PHILOSOPHY.md` — 프로덕트 철학 (In Scope / Out of Scope / Design Principles). 새 기능·도메인·결정 시 정합성 1차 검토 기준.
 - `docs/architecture.md` — 시스템 아키텍처 명세 (Tech Stack / Data Flow / Auth / Infrastructure)
-- `docs/architecture-decisions.md` — Decisions
+- `docs/architecture-decisions/` — Decisions (Decision 하나가 파일 하나. 제목 목록: `grep -m1 '^# Decision' docs/architecture-decisions/*.md`)
 - backlog: `gh issue list --label next`, 의도적 미구현: `docs/PHILOSOPHY.md` Out of Scope
 - **1인 운영 전제** — 단순성 우선 / 운영 부담 최소화. 옵션 도출·EVALUATE·RISK 의 복잡도·운영 부담 판단축. 팀 협업 본질 패턴은 디스카운트.
 
@@ -133,7 +133,7 @@ architect 권고문 산출 후, 메인 세션이 opt-in 으로 DeepSeek 추론�
 - 1인 운영 컨텍스트 의식 — 엔터프라이즈 패턴 자동 추가 금지
 - 위험 항목 명시
 - developer 가 곧바로 받을 수 있는 형태로 작업 분할
-- Decision 후보면 명시 (`docs/architecture-decisions.md` 에 추가할 결정인지)
+- Decision 후보면 명시 (`docs/architecture-decisions/` 에 새 파일로 추가할 결정인지, 기존 Decision 파일의 조항을 고쳐 쓸 결정인지)
 - 권장 옵션 반드시 하나 지정
 
 **금지:**

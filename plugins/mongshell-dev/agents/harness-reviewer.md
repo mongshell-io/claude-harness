@@ -87,7 +87,7 @@ echo "$ROOTS" | while read -r r; do find "$r/agents" "$r/skills" -name '*.md' -p
 - 변경된 하네스 파일은 본문을 읽는다.
 - 비변경 하네스 파일 중 본문 대조가 필요한 후보:
   - **description 도메인 겹침** — 변경 파일과 description 키워드가 인접하거나 책임 범위가 겹치는 후보. skill-rnr-overlap / agent-rnr-overlap 경계가 모호한 쌍이 대상이며, **보수적(recall 우선)** 으로 판단이 애매하면 포함한다.
-  - **Decision 인용 발견** — 변경 파일이 `Decision N`(legacy 순번) 또는 `Decision #N`(이슈번호) 을 인용한 경우 해당 decisions 파일 read (adr-content-mismatch 절차).
+  - **Decision 인용 발견** — 변경 파일이 `Decision N`(legacy 순번) 또는 `Decision #N`(이슈번호) 을 인용한 경우 그 Decision 의 파일 read (adr-content-mismatch 절차).
   - **dispatch-mismatch 후보** — 변경 파일이 skill 이고 "agent X 에 위임" 이라 적었으면 그 agent 파일을 읽는다. 변경 파일이 agent 이면 `echo "$ROOTS" | while read -r r; do git grep -l '<agent-name>' -- "$r/skills/"; done` 로 호출 출처 skill 을 확정한 뒤 읽는다.
 
 판단:
@@ -109,7 +109,7 @@ echo "$ROOTS" | while read -r r; do find "$r/agents" "$r/skills" -name '*.md' -p
 - `agent-rnr-overlap` — agent A 와 agent B 의 책임이 분리되지 않음. 예: developer 가 리뷰까지, code-reviewer 가 수정까지.
 - `dispatch-mismatch` — skill 의 본문이 "agent X 에게 위임" 이라 적었는데 agent X 의 description/본문에는 그 호출 출처가 명시 안 됨, 또는 그 반대. skill ↔ agent 의 호출 책임 분담 불일치.
 - `main-orchestration-violation` — skill/agent 명세가 상시 코어 「오케스트레이터」 조항(`$H/references/claude-md-core.md` 의 블록 — 소비 프로젝트 루트 `CLAUDE.md` 에 복사되는 정본)의 위임 판단 기준(병렬성 / 메인 컨텍스트 격리 / 신선한 독립 리뷰)을 위반 — 즉 그 기준상 위임이 값하는 실질 구현을 메인 세션이 직접 Edit/Write 하도록 명세된 경우. 자명한 변경(한 줄·오타·기계적 텍스트 교정)의 직접 편집은 위반 아님. 위임 판단 기준·'자명한 변경' 경계의 SSOT = 그 「오케스트레이터」 조항 — 본 키는 그 기준을 집행만 하고 재정의하지 않는다. `/pr` 처럼 의도된 예외는 명시되어 있으면 OK.
-- `adr-content-mismatch` — 하네스 `.md` 본문이 특정 Decision (`Decision N` / `Decision #N` / `(Decision N 참조)` / `[Decision N](...)`) 를 인용했지만, `docs/harness-decisions.md` 또는 `docs/architecture-decisions.md` 의 해당 Decision 본문의 결정·이유·결과 중 어느 것과도 직접 연결되지 않는 맥락에서 사용됨. 잘못된 권위 부여. (신규 결정은 이슈번호로 식별 — `Decision #N`.)
+- `adr-content-mismatch` — 하네스 `.md` 본문이 특정 Decision (`Decision N` / `Decision #N` / `(Decision N 참조)` / `[Decision N](...)`) 를 인용했지만, `docs/harness-decisions/` 또는 `docs/architecture-decisions/` 의 해당 Decision 파일 본문의 결정·이유·결과 중 어느 것과도 직접 연결되지 않는 맥락에서 사용됨. 잘못된 권위 부여. (신규 결정은 이슈번호로 식별 — `Decision #N`.)
 - `exception-clause-accumulation` — 단서 조항이 쌓여 skill·agent 의 입력 도메인 분리와 책임 경계가 흐려지는 경우 (예: "도메인 외에도 X 수행"). 공통 판정 기준은 하네스 `README.md` § "예외 조항 누적 검증".
 
 **낭비 패턴 검증**
@@ -119,7 +119,7 @@ echo "$ROOTS" | while read -r r; do find "$r/agents" "$r/skills" -name '*.md' -p
 **Decision 참조 검증 (`adr-content-mismatch`) 절차**:
 
 하네스 `README.md` § "Decision 참조 검증 (adr-content-mismatch 공통 절차)" 를 따른다.
-- read 대상 = `docs/harness-decisions.md` + `docs/architecture-decisions.md` (양쪽 — 하네스 파일이 product Decision 을 인용하는 패턴이 흔함). 같은 식별자가 두 파일에 다 있으면 어느 쪽에서 대조할지는 하네스 `agents/doc-reviewer.md` 의 "Decision 참조 검증 (`adr-content-mismatch`) 절차" 가 적은 표기 규칙으로 정한다.
+- read 대상 = `docs/harness-decisions/` + `docs/architecture-decisions/` (양쪽 — 하네스 파일이 product Decision 을 인용하는 패턴이 흔함). 같은 식별자가 두 폴더에 다 있으면 어느 쪽에서 대조할지는 하네스 `agents/doc-reviewer.md` 의 "Decision 참조 검증 (`adr-content-mismatch`) 절차" 가 적은 표기 규칙으로 정한다.
 - 검출 도메인 = 하네스 루트 아래 `**/*.md`
 
 각 위반은 다음 정보 포함:

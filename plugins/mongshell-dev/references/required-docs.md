@@ -221,19 +221,25 @@ non_goals:
 
 ---
 
-## `docs/architecture-decisions.md`
+## `docs/architecture-decisions/`
 
-frontmatter 없음 — doc-reviewer 일반 문서 skip / `adr-content-mismatch` 대조 read 대상.
+결정 기록은 **Decision 하나가 파일 하나**다.
 
-결정 기록은 **지금 참인 것만** 적는다. 일부 조항이 바뀐 Decision 은 배너 · 「부분 폐기」 표시 · 이력 항목(후속 · 정정 · 개정 등)을 덧대지 않고 그 자리에서 고쳐 쓴다 — 덧댄 것이 쌓이면 읽는 쪽이 여러 겹을 순서대로 적용해야 유효한 조항을 안다. 고쳐 쓰기 전 원문이 필요하면 archive(아래 `docs/decisions-archive.md`)로 내린다. 통째로 번복 · 대체된 Decision 은 헤더 직후 상태 배너만 남기거나 archive 로 내린다 — 어느 쪽인지는 그 프로젝트 결정 문서의 머리말이 정한다. 이 모양(인덱스 상태 칸 · 폐기류 Decision 의 배너 · active Decision 본문)을 기계로 대조하는 것은 `@mongshell/checks` 의 `decision-banners` 검사이고, 무엇을 위반으로 보는지의 세부는 그 검사의 머리말이 권위다(플러그인 스크립트가 아니라 저장소 CI 가 돌리는 검사 — 저장소마다 켜야 돌고, 켜는 법은 그 패키지 README).
+- 폴더 바로 아래의 `<번호>.md` 가 지금 유효한 결정의 전부다. 상태 인덱스 표는 두지 않는다 — 제목 목록은 `grep -m1 '^# Decision' docs/architecture-decisions/*.md` 로 본다.
+- 전부 현행이 아니게 된(폐기 · 대체) Decision 은 `archive/` 하위 폴더로 내린다(`git mv`). archive 의 파일은 규칙이 아니라 기록이다 — 에이전트는 현행 판단의 근거로 읽지 않는다.
+- `README.md` 는 그 프로젝트의 쓰는 법(식별자 체계 · 프로젝트 고유 규칙)이고 Decision 이 아니다.
 
-### 하네스가 요구하는 본문 구조
+frontmatter 없음 — doc-reviewer 는 Decision 파일을 일반 문서로 skip 하고, `adr-content-mismatch` 대조 때 인용된 Decision 의 파일만 read 한다.
 
-- **`## Decision N: <제목>` 헤더 형식** — 콜론 + 제목 필수 (`${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs` 의 헤더 정규식 `^## Decision (#?\d+(?:-\d+)?):` 이 콜론을 앵커로 요구). `N` 은 레거시 순번(정수, 예: `76`) 또는 신규 이슈 식별자(`#` 접두, 예: `#992`; 한 이슈 다결정 시 `#992-1`) — 식별자 정규식 `#?\d+(-\d+)?`. doc-reviewer / harness-reviewer 의 `adr-content-mismatch` 검증 정규식이 이 식별자 형식을 가정.
-- **`- **도입**: #이슈` 줄** — 그 결정을 들인 이슈(또는 PR). 플러그인의 스크립트 · 에이전트는 이 줄을 읽지 않으므로 그것만으로는 선택이다. 다만 `decision-banners` 검사를 켠 저장소에서는 active Decision 의 헤더 뒤 첫 줄로 **필수**다(그 검사가 본문 모양의 기준점으로 읽는다) — 있던 줄을 지우지 않는다. **버전은 적지 않는다** — 어느 릴리스에 나갔는지는 `git tag --contains <머지 커밋>` 으로 본다. 문서에 적으면 릴리스마다 맞춰야 하는 사본이 된다.
+결정 기록은 **지금 참인 것만** 적는다. 조항이 바뀌면 그 파일의 해당 조항을 고쳐 쓴다 — 배너 · 「부분 폐기」 표시 · 이력 항목(후속 · 정정 · 개정 등)을 덧대지 않는다. 덧댄 것이 쌓이면 읽는 쪽이 여러 겹을 순서대로 적용해야 유효한 조항을 안다. 바뀌기 전 내용은 git 이 갖는다(`git log -p -- <파일>`). 이 모양을 기계로 대조하는 것은 `@mongshell/checks` 의 `decisions` 검사이고, 무엇을 위반으로 보는지의 세부는 그 검사의 머리말이 권위다(플러그인 스크립트가 아니라 저장소 CI 가 돌리는 검사 — 저장소마다 켜야 돌고, 켜는 법은 그 패키지 README).
+
+### 하네스가 요구하는 구조
+
+- **파일 이름** — 식별자에서 `#` 를 뗀 것에 `.md` (`Decision #992-1` → `992-1.md`). 식별자는 `#?\d+(-\d+)?` — 레거시 순번(정수, 예: `76`) 또는 이슈 식별자(`#` 접두, 예: `#992`; 한 이슈 다결정 시 `#992-1`). 새 Decision 은 이슈 번호로 짓는다 — 병렬 브랜치가 같은 순번을 집지 않는다. doc-reviewer / harness-reviewer 의 `adr-content-mismatch` 검증이 이 식별자 형식과 파일 이름 규칙을 가정한다.
+- **첫 줄 `# Decision N: <제목>`** — 콜론 + 제목 필수. 코드 · 문서는 `Decision #992` 처럼 식별자로 인용한다.
+- **도입 줄(선택)** — 둔다면 헤더 다음 첫 줄에 `**도입**: #이슈`. 식별자가 이슈 번호인 Decision 은 식별자가 곧 도입 이슈라 생략할 수 있다. **버전은 적지 않는다** — 어느 릴리스에 나갔는지는 `git tag --contains <머지 커밋>` 으로 본다. 문서에 적으면 릴리스마다 맞춰야 하는 사본이 된다.
 - 각 Decision 본문에 **결정·이유·결과** 세 요소 (최소 계약) — `adr-content-mismatch` 검증 시 인용 맥락과 이 셋 중 어느 하나의 직접 연결 여부를 대조 확인.
-  - 플러그인은 모양을 정하지 않는다(`decision-banners` 검사를 켠 저장소는 그 검사 머리말의 모양을 따른다) — 서술 단락이든, 도입 줄 다음에 라벨 항목(`결정` · `이유` 등)을 나열하는 모양이든 세 요소가 읽히면 만족한다. 「결과」 는 그 결정으로 지금 무엇이 참인가이고, 따로 라벨이 없어도 결정 조항에서 읽히면 된다.
-- **`## 상태 인덱스` 표** — 모든 Decision 헤더와 1:1 대응(각 식별자가 한 행 — `| 식별자 | 결정 한 줄 | 상태 |`). `${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs` 가 헤더 집합 ↔ 인덱스 집합을 대조해 MISSING(헤더에만)/DANGLING(인덱스에만)/중복을 검출한다 (개수 비교 아님 — `/qa` 가 decisions 파일 변경 시 실행). 글머리표 목록은 읽지 못한다.
+  - 모양은 `## 소제목` 구획 또는 `- **라벨**` 항목 목록이다. 헤더(와 도입 줄) 뒤에 곧바로 본문이 온다. 「결과」 는 그 결정으로 지금 무엇이 참인가이고, 따로 라벨이 없어도 결정 조항에서 읽히면 된다.
 
 ---
 
@@ -279,25 +285,4 @@ frontmatter 없음 — doc-reviewer 일반 문서 skip / `adr-content-mismatch` 
 ## 다루지 않는 것
 
 - **영역별 `CLAUDE.md`** — 프로젝트 디렉토리 구조에 따라 가변. 작성 안내는 SSOT 저장소 README 이식 가이드의 「영역별 `CLAUDE.md`」 단계(5번).
-- **`docs/harness-decisions.md`** — 프로젝트 로컬 결정 기록 (`docs/architecture-decisions.md` 와 동급). 하네스와 함께 배포되지 않는다 — 프로젝트마다 자기 것을 쓰고, 없어도 된다. frontmatter 없으므로 doc-reviewer 는 일반 문서로 skip. 에이전트는 `adr-content-mismatch` 대조 참조용으로만 read 한다 — harness-reviewer, 그리고 인용이 이 파일을 이름과 함께 밝힌 경우의 doc-reviewer (둘 다 본문 정합 검증 주체 아님). `check-decisions-index.mjs` 도 이 파일을 읽는다 — 그래서 구조 계약은 `docs/architecture-decisions.md` 절과 같다.
-
----
-
-## `docs/decisions-archive.md`
-
-frontmatter 없음 — doc-reviewer 일반 문서로 skip.
-
-### 하네스가 요구하는 본문 구조
-
-- `architecture-decisions.md` 에서 내린 Decision 원문을 무수정 보존 — 무엇을 내리는지(번복·대체된 Decision 만인가, 고쳐 쓰기 전 본문도인가)는 live 파일 머리말이 권위. `## Decision N: <제목>` 헤더 형식(콜론 + 제목 필수, 레거시 순번 또는 `#이슈` 식별자 — live 파일과 동일 계약) 유지.
-- **같은 식별자의 헤더는 하나** — 같은 Decision 을 다시 내릴 때는 헤더를 새로 만들지 않고 그 항목 아래에 덧붙인다 (`check-decisions-index.mjs` 가 헤더 중복을 불일치로 본다).
-- **`## 목차` 표** — 보관된 Decision 의 네비게이션 인덱스(TOC). 상태·supersede 권위가 아니라(그건 live 파일 `상태 인덱스`) 네비게이션용. `${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs` 가 목차 ↔ 헤더 집합 대조로 검증.
-- **`docs/harness-decisions-archive.md`** (선택) — `harness-decisions.md` 의 원문을 따로 보관하는 프로젝트의 파일(두 live 파일의 순번이 겹쳐 한 archive 에 섞을 수 없을 때). 계약은 위 항목들과 같고, 같은 스크립트가 파일이 있으면 똑같이 검사한다.
-
-### 참조하는 agent/skill
-
-어떤 에이전트도 이 파일을 read 하지 않는다 — `adr-content-mismatch` 의 read 대상은 live 결정 파일뿐이다(하네스 `README.md` § "Decision 참조 검증 (adr-content-mismatch 공통 절차)"). 읽는 것은 스크립트다.
-
-| 위치 | 동작 |
-|------|------|
-| `/qa` 스킬 (`check-decisions-index.mjs`) | decisions 파일 변경 시 목차 ↔ 헤더 집합 대조 |
+- **`docs/harness-decisions/`** — 프로젝트 로컬 결정 기록 (`docs/architecture-decisions/` 와 동급이고 구조 계약이 같다). 하네스와 함께 배포되지 않는다 — 프로젝트마다 자기 것을 쓰고, 없어도 된다. 에이전트는 `adr-content-mismatch` 대조 참조용으로만 read 한다 — harness-reviewer, 그리고 인용이 이 폴더를 이름과 함께 밝힌 경우의 doc-reviewer (둘 다 본문 정합 검증 주체 아님).
