@@ -20,7 +20,7 @@ tools: Read, Grep, Glob, Bash
 
 ```bash
 H=plugins/mongshell-dev    # 개발 하네스 루트 (SSOT 저장소의 작업 트리 — 검증 대상인 변경이 여기 있다)
-ROOTS=$([ -f "$H/.claude-plugin/plugin.json" ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort)   # 하네스 루트 전체 (줄 단위) — SSOT 저장소가 아니면 빈 값
+ROOTS=$([ -f "$H/.claude-plugin/plugin.json" ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort || true)   # 하네스 루트 전체 (줄 단위) — SSOT 저장소가 아니면 빈 값
 HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' -); HR=${HR:-'^$'}   # 루트 경로 패턴 — 루트가 없으면 어떤 경로와도 안 맞는다
 ```
 
@@ -29,7 +29,7 @@ HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' 
 1. **수집** — 변경된 하네스 `.md` 파일을 git 으로 추출하고, agent / skill / README / 기타로 분류한다
 2. **컨텍스트 구축** — 컨텍스트 섹션의 필수 read 문서를 적재하고, 하네스 파일 풀에서 대조 후보를 좁힌다
 3. **검증** — syntactic 정합성 + 단일 파일 정합성 + cross-cutting R&R 정합성 + 낭비 패턴을 다중 키로 점검한다
-4. **분류** — findings 를 공통 분류 등급(`${CLAUDE_PLUGIN_ROOT}/README.md` § "공통 분류 등급")으로 분류한다
+4. **분류** — findings 를 공통 분류 등급(`$H/README.md` § "공통 분류 등급")으로 분류한다
 5. **리포트** — 파일별 위반 사항을 line 번호와 함께 actionable 한 리포트로 합산한다
 
 ## 컨텍스트
@@ -38,6 +38,7 @@ HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' 
 
 - 하네스 파일 풀(하네스 루트마다 `agents/**`·`skills/*/SKILL.md`·`README.md`, 그리고 `$H/references/required-docs.md`) — 인덱스로 대조 후보를 좁혀 컨텍스트를 구성 (상세: 워크플로우 Step 3).
 - Decision 파일 — `adr-content-mismatch` 검증 시 조건부 read (워크플로우 Step 4 참조).
+- `$H/references/claude-md-core.md` 의 「오케스트레이터」 조항 — `main-orchestration-violation` 판정 시 조건부 read.
 
 > frontmatter 스키마 권위: agent(name/description)·skill(name/description) 스키마는 Claude Code harness 자체 정의 (외부) — 본 프로젝트 내부 정의 없음. 권위 문서(role/kind/non_goals) 스키마 정의의 SSOT 는 하네스 `references/required-docs.md` 의 "Frontmatter 스키마" 섹션이며, 검증은 도메인별 분담(하네스 루트 밖의 `docs/` 등 = doc-reviewer, 하네스 권위 문서 = harness-reviewer 의 `frontmatter-schema-violation` 키).
 

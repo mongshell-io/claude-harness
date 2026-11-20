@@ -97,7 +97,7 @@ flowchart LR
 > - **하네스 SSOT 저장소** (`plugins/mongshell-dev/.claude-plugin/plugin.json` 이 있는 저장소) — `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부. 개발 하네스(이 플러그인)뿐 아니라 같은 저장소의 다른 플러그인(운영 도구 등)도 harness-reviewer 로 간다 — 새 플러그인도 `plugin.json` 만 있으면 따로 등록하지 않아도 이 도메인에 든다.
 > - **소비 프로젝트** (그 밖의 모든 저장소) — 없음 (harness 도메인 공집합). 자기 `plugins/<이름>/` 이나 `plugin.json` 을 가진 프로젝트라도 SSOT 저장소가 아니면 마찬가지다.
 >
-> 공통 정의(이 README 의 라우팅·공통 분류 등급·작성 가이드, `references/required-docs.md`)의 위치는 **개발 하네스 루트**(SSOT 저장소의 `plugins/mongshell-dev/`, 소비 프로젝트 세션에서는 설치된 플러그인 루트 `${CLAUDE_PLUGIN_ROOT}`) 하나다. 판정 명령은 harness-reviewer `## 입력 도메인` 과 `/qa` Step 1 이 같은 블록을 쓴다.
+> 공통 정의(이 README 의 라우팅·공통 분류 등급·작성 가이드, `references/required-docs.md`)은 개발 하네스 한 곳에만 있다. 스킬 · 에이전트는 설치된 플러그인 루트(`${CLAUDE_PLUGIN_ROOT}`)의 것을 읽고, harness-reviewer 만 SSOT 저장소 작업 트리(`plugins/mongshell-dev/`)의 것을 읽는다 — 검증 대상이 그 파일이라서. 판정 명령은 harness-reviewer `## 입력 도메인` 과 `/qa` Step 1 이 같은 블록을 쓴다.
 
 > **코드 도메인 정의**: "프로젝트 toolchain 입력 코드" 의 구체 확장자는 영역별 `CLAUDE.md` 또는 `docs/development.md` 의 lint/typecheck/test 명령 대상이 권위. toolchain 외 파일 (이미지/lock/data 등) 의 처리는 아래 "도메인 외 입력 정책" 참조.
 
@@ -189,7 +189,7 @@ skill / agent 가 참조하는 프로젝트 권위 문서(`docs/**`, 영역별 `
 
 이 하네스 본문에 들어가면 안 되는 도메인 키워드. 새 agent/skill 작성 또는 기존 파일 수정 시 참조.
 
-**적용 범위**: 임의의 소비 프로젝트에서 그대로 동작해야 하는 본문 — 이 플러그인의 `agents/` · `skills/` · 이 README, 그리고 스킬 · 에이전트가 읽는 `references/` 문서(이식 계약 등). 대상이 아닌 것은 둘이다. (1) 이 플러그인의 **조직 표준 문서** — 스킬 · 에이전트가 읽지 않고 저장소를 맞출 때 여는 배선 · 설정 문서와 `templates/`, 상시 코어 블록의 프로젝트 값 기본치. mongshell-io 저장소들의 공통 값을 적는 것이 목적이라 저장소 이름 · 스택 · 설정 값을 그대로 담는다. (2) 같은 SSOT 저장소의 다른 플러그인 — 특정 운영 환경을 잇는 것이 목적이라 채널·봇 ID 같은 개인 운영 값을 담을 수 있다.
+**적용 범위**: 임의의 소비 프로젝트에서 그대로 동작해야 하는 본문 — 이 플러그인의 `agents/` · `skills/` · 이 README, 그리고 스킬 · 에이전트가 읽는 `references/` 문서(이식 계약 등). 대상이 아닌 것: (1) 이 플러그인의 **조직 표준 문서** — 스킬 · 에이전트가 읽지 않는 `references/` 문서(저장소를 맞출 때 여는 배선 · 설정 · 구조 표준 · 함정 모음)와 `templates/`, 상시 코어 블록의 프로젝트 값 기본치. mongshell-io 저장소들의 공통 값을 적는 것이 목적이라 저장소 이름 · 스택 · 설정 값을 그대로 담는다. (2) 같은 SSOT 저장소의 다른 플러그인 — 특정 운영 환경을 잇는 것이 목적이라 채널·봇 ID 같은 개인 운영 값을 담을 수 있다.
 
 - **영역별 경로** — 예: `docs/`, `src/lib/`, `src/components/`, `src/app/api/` 등 프로젝트 종속 경로. 대신 "영역별 `CLAUDE.md`" / "프로젝트 디렉토리" 등으로 일반화.
 - **빌드/검증 명령어** — 프로젝트 스택 종속 명령 (`pnpm test:run`, `pnpm typecheck`, `pnpm lint`, `pnpm db:push`, `pnpm build` 등). 대신 "테스트 명령", "typecheck 명령", "lint 명령" 등 역할 표현 + "구체 명령은 `docs/development.md` 또는 영역별 `CLAUDE.md` 권위" 위임.

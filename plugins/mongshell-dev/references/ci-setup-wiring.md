@@ -1,5 +1,5 @@
 ---
-role: "mongshell-io 앱 저장소 CI 잡이 하네스 공용 composite action `setup-node-pnpm` 을 부르는 배선 — 표준 잡 모양(checkout → setup-node-pnpm → 검사) · 입력 · node_modules 를 남기는 workspace 정리 스니펫."
+role: "mongshell-io 저장소 CI 잡이 하네스 공용 composite action `setup-node-pnpm` 을 부르는 배선 — 표준 잡 모양(checkout → setup-node-pnpm → 검사) · 입력 · node_modules 를 남기는 workspace 정리 스니펫."
 kind: operational
 non_goals:
   - "Node · corepack · pnpm 준비 로직 자체와 그 이유(사고 기록) — 하네스 `.github/actions/setup-node-pnpm/action.yml` 이 권위"

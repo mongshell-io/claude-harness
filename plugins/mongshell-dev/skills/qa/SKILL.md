@@ -79,7 +79,7 @@ QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 git diff $RANGE --name-only --diff-filter=d -- '*.md' > "$QA_TMP/md-changed.txt" 2>/dev/null || true
 # 하네스 루트 — 하네스 SSOT 저장소는 .claude-plugin/plugin.json 을 가진 plugins/<이름>/ 전부. 소비 프로젝트는 없음 → harness 도메인 공집합이 정상.
 # 정의의 권위는 하네스 README "Reviewer 라우팅" — 이 블록은 harness-reviewer 와 같은 판정이다.
-ROOTS=$([ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort)
+ROOTS=$([ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort || true)
 HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' -); HR=${HR:-'^$'}   # 루트가 없으면 어떤 경로와도 안 맞는다
 grep -Ev "$HR" "$QA_TMP/md-changed.txt" > "$QA_TMP/doc-domain.txt" 2>/dev/null || true    # doc-reviewer 도메인
 grep -E "$HR" "$QA_TMP/md-changed.txt" > "$QA_TMP/harness-domain.txt" 2>/dev/null || true  # harness-reviewer 도메인

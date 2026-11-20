@@ -16,7 +16,7 @@
 #   deny_paths 는 작업 트리의 호출 파일에서 읽는다(CLAUDE.md 와 달리 기준 브랜치를 보지 않는다). 쓰이는 곳은
 #   드리프트 경고와, 정책 노브 문장이 없을 때의 HUMAN 폴백이다. 호출 파일을 바꾸는 PR 은 공용 automerge 가
 #   항상 거부하므로(.github/workflows/) PR 이 이 값을 고쳐도 자동 머지 범위는 넓어지지 않는다 — 달라지는 것은
-#   marker 에 찍히는 「사람이 머지」 줄뿐이다.
+#   marker 에 찍히는 「사람이 머지」 · 「위험 경로」 줄뿐이다.
 #
 # 경로 → ERE: `/` 로 끝나면 디렉토리 접두(`dir/`), 아니면 파일(`file$`). 메타문자는 이스케이프.
 #   POSIX ERE 만 쓴다 — 러너·로컬의 BSD/GNU grep 이 같게 읽도록.
@@ -94,8 +94,8 @@ fi
 DENY=""
 if [ -f "$CALLER" ]; then
 	DENY=$(sed -n "s/^[[:space:]]*deny_paths:[[:space:]]*'\(.*\)'[[:space:]]*\$/\1/p" "$CALLER" | head -1)
-	# 값이 있는 줄만 본다 — 재사용 워크플로 자신(inputs 정의의 빈 `deny_paths:`)은 호출 파일이 아니다.
-	if [ -z "$DENY" ] && grep -q '^[[:space:]]*deny_paths:[[:space:]]*[^[:space:]]' "$CALLER"; then
+	# 재사용 워크플로 자신(`on: workflow_call` — inputs 정의에 `deny_paths:` 가 있다)은 호출 파일이 아니라 경고하지 않는다.
+	if [ -z "$DENY" ] && grep -q '^[[:space:]]*deny_paths:' "$CALLER" && ! grep -q '^[[:space:]]*workflow_call:' "$CALLER"; then
 		warn "$CALLER 의 deny_paths 를 읽지 못함 — 한 줄 홑따옴표 형식(deny_paths: '^(…)')만 읽는다 (automerge-wiring.md)"
 	fi
 fi

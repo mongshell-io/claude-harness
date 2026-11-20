@@ -9,7 +9,7 @@ mongshell-io 저장소들이 같이 쓰는 Claude Code 하네스의 단일 원�
 | 공용 PR 자동 머지 (재사용 워크플로) | [.github/workflows/automerge.yml](.github/workflows/automerge.yml) | 앱 저장소 호출 파일이 `@main` 으로 부름 | **머지 즉시** — 부르는 저장소 전부 |
 | 공용 CI 준비 (composite action) | [.github/actions/setup-node-pnpm/](.github/actions/setup-node-pnpm/) | 앱 CI 잡이 `@main` 으로 부름 | **머지 즉시** — 부르는 저장소 전부 |
 | 공용 검사 `@mongshell/checks` | [checks/](checks/) | 앱 `devDependencies` 의 git 의존성 | 앱이 lockfile 의 커밋 SHA 를 올릴 때 ([checks/README.md](checks/README.md) 「설치」) |
-| 복사해 쓰는 정본 — 루트 `CLAUDE.md` 코어 블록 · 저장소 설정 템플릿 | [references/claude-md-core.md](plugins/mongshell-dev/references/claude-md-core.md) · [templates/](plugins/mongshell-dev/templates/) | 앱 저장소에 복사 | 수동 — 코어 블록은 `/qa` 가 마커(`harness-core`) 낡음을 알림 |
+| 복사해 쓰는 정본 — 루트 `CLAUDE.md` 코어 블록 · 저장소 설정 템플릿 · references 문서가 「그대로 둔다」 고 정한 것(automerge 호출 파일 전문 · 러너 설명 주석 · biome/tsconfig 공통 값) | [references/](plugins/mongshell-dev/references/) · [templates/](plugins/mongshell-dev/templates/) | 앱 저장소에 복사 | 수동 — 저장소마다 반영 PR(워크플로 파일은 그 저장소에서 사람이 머지). 코어 블록은 `/qa` 가 마커(`harness-core`) 낡음을 알림 |
 
 하네스는 **플러그인으로만** 배포합니다. 소비 프로젝트에 스킬·에이전트 사본을 두지 않습니다.
 
@@ -34,7 +34,7 @@ mongshell-io 저장소들이 같이 쓰는 Claude Code 하네스의 단일 원�
 ## 경로 규칙
 
 - **스킬·에이전트 본문**이 자기 플러그인의 동봉 파일(README·references·scripts)을 가리킬 때는 `${CLAUDE_PLUGIN_ROOT}/…` 로 적습니다. Claude Code 가 본문을 로드할 때 실제 경로로 치환합니다.
-- `${CLAUDE_PLUGIN_ROOT}` 는 **셸 환경변수가 아닙니다.** 스킬·에이전트 본문이 아닌 파일(references 문서, 스크립트)에 적으면 치환되지 않고, 그 안의 명령을 그대로 돌리면 빈 값이 됩니다. 그런 파일에서는 "이 문서가 있는 폴더 기준" 으로 적습니다.
+- `${CLAUDE_PLUGIN_ROOT}` 는 **Bash 도구의 셸에는 없습니다.** 스킬·에이전트 본문이 아닌 파일(references 문서, 스크립트)에 적으면 치환되지 않으므로, 그런 파일의 **명령**에는 쓰지 않고 "이 문서가 있는 폴더 기준" 으로 적습니다(경로를 가리키는 표기로만 쓰는 것은 괜찮습니다).
 - 프로젝트 소유 파일(`.claude/browser-scenarios.md`, `docs/**`, 영역별 `CLAUDE.md`)은 프로젝트 경로 그대로 적습니다.
 
 ## 파일 분류

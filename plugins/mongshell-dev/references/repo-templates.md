@@ -17,7 +17,7 @@ mongshell-io 앱 저장소(sellcaddie · gambau · mongshell-admin · auction2se
 | 저장소 종류 | 세 정본 | biome · tsconfig 공통 값 |
 |---|---|---|
 | **앱 저장소** — Next.js 스택(위 여섯 곳) | 셋 다, 아래 표의 허용 차이만 | 적용 |
-| **그 밖의 저장소** — 라이브러리 · 인프라 스크립트 · 네이티브 앱 등 하네스 플러그인이나 공용 automerge 만 쓰는 곳 | 필요한 것만 골라 둔다. dependabot · PR 템플릿은 두었다면 정본과 같게 유지한다. `.claude/settings.json` 은 플러그인을 켜는 부분(`extraKnownMarketplaces` · `enabledPlugins` 의 `mongshell-dev@mongshell`)만 정본과 맞추면 된다 — 그 스택에 쓸모없는 플러그인(예: TypeScript 가 없는 저장소의 `typescript-lsp`)은 빼도 되고, 권한 모드는 그 저장소가 정한다 | 대상 아님 |
+| **그 밖의 저장소** — 라이브러리 · 인프라 스크립트 · 네이티브 앱 등 하네스 플러그인이나 공용 automerge 만 쓰는 곳 | 필요한 것만 골라 둔다. dependabot · PR 템플릿은 두었다면 정본과 같게 유지한다(npm 을 쓰지 않는 저장소의 dependabot 은 github-actions 블록만). `.claude/settings.json` 은 플러그인을 켜는 부분(`extraKnownMarketplaces` · `enabledPlugins` 의 `mongshell-dev@mongshell`)만 정본과 맞추면 된다 — 그 스택에 쓸모없는 플러그인(예: TypeScript 가 없는 저장소의 `typescript-lsp`)은 빼도 되고, 권한 모드는 그 저장소가 정한다 | 대상 아님 |
 
 ## 정본과 저장소 경로
 
@@ -55,7 +55,7 @@ H="<이 문서가 있는 폴더>/../templates"
 # 비어야 한다
 diff "$H/pull_request_template.md" .github/pull_request_template.md
 diff <(jq -S . "$H/claude-settings.json") <(jq -S . .claude/settings.json)
-# 허용 차이(directories · 저장소 고유 ignore · 머리 주석)만 남아야 한다
+# 허용 차이(directories · 저장소 고유 ignore)만 남아야 한다
 diff "$H/dependabot.yml" .github/dependabot.yml
 # biome schema 와 설치된 biome 버전이 같아야 한다
 grep -o 'schemas/[0-9.]*' biome.json; node -p "require('@biomejs/biome/package.json').version"

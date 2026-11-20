@@ -1,5 +1,5 @@
 ---
-role: "mongshell-io 앱 저장소가 하네스 공용 automerge 재사용 워크플로를 부르는 배선 — 호출 파일 전문 · verify 워크플로 쪽 요구."
+role: "mongshell-io 저장소가 하네스 공용 automerge 재사용 워크플로를 부르는 배선 — 호출 파일 전문 · verify 워크플로 쪽 요구."
 kind: operational
 non_goals:
   - "자동 머지 로직 자체(PR 판정 · 거부 경로 가드 · squash · 브랜치 삭제 · 이슈 닫기) — 하네스 `.github/workflows/automerge.yml` 이 권위"
@@ -48,7 +48,7 @@ jobs:
       # label: automerge              # 기본값과 다를 때만
 ```
 
-**저장소마다 달라도 되는 것**은 넷뿐이다 — `workflows:` 값 · `with:` 의 입력(`deny_paths` · `runner` · `label`) · 머리 주석 둘째 줄이 가리키는 문서 절 이름(상시 코어 블록을 쓰지 않는 저장소는 「정책 노브」 대신 자기 CLAUDE.md 의 머지 규약 절) · 끝의 `# runner:` · `# label:` 안내 주석(지워도 된다). 그 밖(`permissions` · `if:` · `uses:` · 트리거)은 전문 그대로 둔다. `runner` 는 기본값과 다를 때만 적는다.
+**실행되는 YAML 에서 저장소마다 달라도 되는 것**은 `workflows:` 값과 `with:` 의 입력(`deny_paths` · `runner` · `label`)뿐이다 — `permissions` · `if:` · `uses:` · 트리거는 전문 그대로 둔다. `runner` 는 기본값과 다를 때만 적는다. **주석은 저장소 고유 근거를 더해도 된다** — 머리 주석 둘째 줄이 가리키는 문서 절 이름(상시 코어 블록을 쓰지 않는 저장소는 「정책 노브」 대신 자기 CLAUDE.md 의 머지 규약 절), 입력 값의 이유, 이슈 참조. 끝의 `# runner:` · `# label:` 안내 주석은 지워도 된다.
 
 - **concurrency 를 호출 파일에 두지 않는다** — 재사용 쪽 잡이 PR 단위 concurrency 를 갖는다. 같은 이름의 그룹을 워크플로 단위로 또 두면 교착으로 취소된다.
 - **`permissions` 는 호출 잡에 준다**(`actions: read` · `contents: write` · `pull-requests: write` · `issues: write`) — 재사용 쪽 잡은 그 범위 안에서만 쓴다. `actions: read` 가 빠지면 잡 목록 조회가 403 으로 실패해 자동 머지가 전부 멈춘다(2026-11-18 실측). 덜 주면 재사용 잡이 시작 단계에서 실패한다(머지되지 않음 · fail-closed).

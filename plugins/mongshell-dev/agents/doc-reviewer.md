@@ -66,7 +66,8 @@ frontmatter 가 있는데 3 필드(`role` / `kind` / `non_goals`)가 다 안 채
 권위 풀 전체의 frontmatter 를 인덱스로 훑어 대조 후보를 좁힌다:
 
 ```bash
-# 권위 풀(frontmatter 있는 .md)의 frontmatter 만 출력 — 입력 도메인 전체(루트 · 영역별 CLAUDE.md 포함)
+# 권위 풀(frontmatter 있는 .md)의 frontmatter 만 출력 — 루트 · 영역별 CLAUDE.md 포함.
+# 하네스 SSOT 저장소에서는 하네스 루트(plugins/<이름>/) 아래 결과는 이 도메인이 아니므로 버린다.
 git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" ] && { echo "== $f"; sed -n '2,/^---$/p' "$f"; }; done
 ```
 
