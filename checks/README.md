@@ -61,7 +61,8 @@ mongshell-io 앱 저장소가 같이 쓰는 결정적 검사(`check:*`)입니다
 | `no-horizontal-scroll` | 가로 스크롤 선언(`overflow-x-auto` 등)과 가로 짝 없는 세로 스크롤 | `srcDir` (`src`) · `hint` (필수 — 넓은 표를 맞추는 법) · `decisionRef` (필수 — 근거 결정). 허용 목록 없음 |
 | `doc-symbols` | 권위 문서가 백틱으로 부르는 이름이 소스에 없는 것(드리프트 · 오기재) | `docs` (필수) · `sourceDirs` (`["src", "scripts"]`) · `sourceFiles` (`package.json` · `drizzle.config.ts` · `vitest.config.ts` · `biome.json`) · `haystackExclude` · `allow: [{symbol, why}]`. **`harness.config.json` 은 설정과 무관하게 증거에서 뺀다** — 허용 목록이 자기를 증명하면 무동작이 된다 |
 | `ui-barrel` | UI barrel(`index.ts` 또는 `index.tsx`)의 깨진 re-export(`export *` 포함). 상대경로 지정자만 파일을 확인한다(확장자를 적은 것 포함) — 패키지 · 경로 별칭 지정자는 판정하지 않는다(typecheck 몫) | `dir` (`src/components/ui`) |
-| `decision-banners` | 결정 기록이 「지금 참인 것만 적는다」 는 모양에서 벗어난 것 — 폐기 · superseded 인데 헤더 직후 배너가 없는 Decision, `부분` 상태 · 배너, active Decision 에 덧댄 것(상태 칸의 세부 · 헤더 제목과 다른 인덱스 요약 · 도입 줄 앞에 끼운 줄 · 최상위 `- **라벨**` 항목이 아닌 줄 · 이력 항목), 3칸이 아닌 인덱스 행, `## 상태 인덱스` 부재. **정리된 저장소만 켠다**(아래) | `docs` (`["docs/architecture-decisions.md", "docs/harness-decisions.md"]`) — 목록의 파일이 없으면 실패. 결정 기록이 하나뿐이면 그 하나만 적는다. 허용 목록 없음 |
+| `decision-banners` | 결정 기록이 「지금 참인 것만 적는다」 는 모양에서 벗어난 것 — 폐기 · superseded 인데 헤더 직후 배너가 없는 Decision, `부분` 상태 · 배너, active Decision 에 덧댄 것(상태 칸의 세부 · 헤더 제목과 다른 인덱스 요약 · 도입 줄 앞에 끼운 줄 · 최상위 `- **라벨**` 항목이 아닌 줄 · 이력 항목), 3칸이 아닌 인덱스 행, `## 상태 인덱스` 부재. **정리된 저장소만 켠다**(아래). 옛 한 파일 형식용 — 새 형식은 `decisions` | `docs` (`["docs/architecture-decisions.md", "docs/harness-decisions.md"]`) — 목록의 파일이 없으면 실패. 결정 기록이 하나뿐이면 그 하나만 적는다. 허용 목록 없음 |
+| `decisions` | Decision 하나가 파일 하나인 결정 기록(`<폴더>/<번호>.md` · 현행이 아닌 것은 `<폴더>/archive/`)이 「지금 참인 것만 적는다」 는 모양에서 벗어난 것 — 첫 줄이 `# Decision <식별자>: <제목>` 이 아닌 파일, 식별자와 파일 이름 불일치, 같은 번호가 폴더 바로 아래와 `archive/` 양쪽에 있는 것, 헤더(도입 줄이 있으면 도입 줄)와 본문 블록 사이에 끼운 줄(배너 · 인용 · 단락), 목록 꼴에서 최상위 `- **라벨**` 항목이 아닌 줄, 소제목 꼴에서 둘째 `# ` 제목, 이력 이름(`갱신` · `후속` · `정정` 등)의 항목 · `## ` 소제목, 없는 폴더 · Decision 이 하나도 없는 폴더. archive 파일은 첫 줄과 파일 이름만 본다. **옮긴 저장소만 켠다**(아래) | `dirs` (`["docs/architecture-decisions", "docs/harness-decisions"]`) — 목록의 폴더가 없으면 실패. 결정 기록 폴더가 하나뿐이면 그 하나만 적는다 · `pending` (`[]`) — 아직 정리하지 못한 Decision 파일의 경로. 그 파일의 위반은 실패로 치지 않는다. 위반이 없어진 파일 · 없는 파일이 남아 있으면 실패(목록은 줄기만 한다) |
 
 각 검사의 근거 · 불변식 · 남은 한계는 [checks/](checks/) 의 파일 머리말이 권위입니다. 저장소 고유 규약(감바우 ui README 카탈로그 · `sideEffects` 표식 등)은 그 저장소 로컬 스크립트로 남깁니다.
 
@@ -78,6 +79,19 @@ mongshell-io 앱 저장소가 같이 쓰는 결정적 검사(`check:*`)입니다
 ```
 
 정리 전의 결정 기록은 위반이 수백 건 나옵니다. 정리하는 동안에는 스크립트 · 섹션을 추가한 브랜치에서 `pnpm check:decision-banners` 로 남은 건수를 봅니다(켜지 않은 채로는 섹션이 없어 설정 오류로 끝납니다).
+
+`decisions` 를 켜는 법 — 결정 기록을 Decision 하나당 파일 하나로 옮긴 뒤에:
+
+```jsonc
+// 앱 package.json
+"check:decisions": "mongshell-check decisions"
+// 앱 harness.config.json
+"decisions": {}                                             // 결정 기록 폴더가 둘 다 있을 때
+"decisions": { "dirs": ["docs/architecture-decisions"] }    // 하나뿐일 때
+"decisions": { "pending": ["docs/architecture-decisions/7-1.md"] }  // 덧댄 것이 남은 파일 — 정리하는 PR 에서 목록에서 뺀다
+```
+
+`decision-banners` 와 `decisions` 는 서로 다른 배치를 봅니다 — 옮긴 저장소는 `check:decision-banners` 스크립트와 섹션을 지우고 `decisions` 만 둡니다.
 
 ## 바꿀 때
 
