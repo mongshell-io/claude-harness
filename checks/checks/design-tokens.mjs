@@ -73,10 +73,14 @@ export function parseDefinedTokens(css) {
 	return defined;
 }
 
-/** 주석 안의 토큰 이름은 검사 대상이 아니다 — 설명문이 게이트를 깨지 않도록 먼저 걷어낸다. */
+/**
+ * 주석 안의 토큰 이름은 검사 대상이 아니다 — 설명문이 게이트를 깨지 않도록 먼저 걷어낸다.
+ * 블록 주석은 줄바꿈을 남기고 지운다 — 보고하는 줄 번호가 원문과 맞아야 한다.
+ */
 function stripComments(text, ext) {
-	if (ext === ".css") return text.replace(/\/\*[\s\S]*?\*\//g, " ");
-	return text.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+	const noBlock = text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+	if (ext === ".css") return noBlock;
+	return noBlock.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 }
 
 /**

@@ -85,6 +85,13 @@ describe("design-tokens", () => {
 		assert.match(out, /`border-l-app-nope`/);
 	});
 
+	it("여러 줄 블록 주석 뒤의 위반도 원문 줄 번호로 보고한다", (t) => {
+		const src = '/**\n * 설명\n * 둘째 줄\n */\nexport const a = 1;\nexport const b = "bg-app-nope";\n';
+		const { code, out } = runCheck(t, "design-tokens", { "src/styles/design-tokens.css": css, "src/a.tsx": src });
+		assert.equal(code, 1);
+		assert.match(out, /src\/a\.tsx:6\b/);
+	});
+
 	it("주석 안의 이름은 보지 않는다", (t) => {
 		const files = { "src/styles/design-tokens.css": css, "src/a.tsx": "// bg-app-nope 는 없다\n/* text-app-gone */" };
 		assert.equal(runCheck(t, "design-tokens", files).code, 0);
