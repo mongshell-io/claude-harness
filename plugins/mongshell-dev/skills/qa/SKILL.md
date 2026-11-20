@@ -77,10 +77,9 @@ rm -rf "$QA_TMP" && mkdir -p "$QA_TMP"
 # --diff-filter=d : deleted 파일 제외 (reviewer 가 부재 파일 검사 시도 방지)
 QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 git diff $RANGE --name-only --diff-filter=d -- '*.md' > "$QA_TMP/md-changed.txt" 2>/dev/null || true
-# 하네스 루트 — vendored 소비 프로젝트는 .claude/ (.claude/.harness = sync 가 생성하는 vendored 마커),
-# 하네스 SSOT 저장소는 .claude-plugin/plugin.json 을 가진 plugins/<이름>/ 전부. 플러그인 소비 프로젝트는 없음 → harness 도메인 공집합이 정상.
+# 하네스 루트 — 하네스 SSOT 저장소는 .claude-plugin/plugin.json 을 가진 plugins/<이름>/ 전부. 소비 프로젝트는 없음 → harness 도메인 공집합이 정상.
 # 정의의 권위는 하네스 README "Reviewer 라우팅" — 이 블록은 harness-reviewer 와 같은 판정이다.
-ROOTS=$([ -f .claude/.harness ] && echo .claude || { [ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort; })
+ROOTS=$([ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort)
 HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' -); HR=${HR:-'^$'}   # 루트가 없으면 어떤 경로와도 안 맞는다
 grep -Ev "$HR" "$QA_TMP/md-changed.txt" > "$QA_TMP/doc-domain.txt" 2>/dev/null || true    # doc-reviewer 도메인
 grep -E "$HR" "$QA_TMP/md-changed.txt" > "$QA_TMP/harness-domain.txt" 2>/dev/null || true  # harness-reviewer 도메인
@@ -114,7 +113,7 @@ git diff $RANGE --name-only | grep -E '<ui-path-pattern>' > "$QA_TMP/ui-changed.
 
 - **DB schema 경로 변경 여부**: 변경 파일 목록에 DB schema 경로(권위: DB 영역 CLAUDE.md — 구체 경로 패턴은 해당 문서 참조)가 포함되면 schema 정합성 검사를 실행 목록에 추가한다. schema 정합성은 (a) 마이그레이션 dirty + (b) ERD 산출물 staleness 두 검사를 함께 수행한다 (구체 명령·경로 권위: 동일 CLAUDE.md).
 - **decisions 도입 버전 확정의 조건**: `docs/architecture-decisions.md` 또는 `docs/harness-decisions.md` 존재 여부만 본다 — 이번 diff 가 그 파일을 건드렸는지는 무관하다 (이유는 Step 2). 결정 문서가 하나도 없는 프로젝트에서 스킵해야 하는 이유는 스크립트가 문서 부재를 루트 해석 실패로 판정하기 때문이다.
-- **harness-core 마커 정합의 조건**: 루트 `CLAUDE.md` 에 `harness-core` 마커가 있으면 실행한다 — 이번 diff 와 무관하다. 낡음은 내 변경이 아니라 정본(`${CLAUDE_PLUGIN_ROOT}/references/claude-md-core.md`) 갱신으로 발생하기 때문이다. 마커가 없는 프로젝트(코어 블록 미삽입) 와 `CLAUDE_PLUGIN_ROOT` 가 없는 vendored 소비 프로젝트는 스킵된다.
+- **harness-core 마커 정합의 조건**: 루트 `CLAUDE.md` 에 `harness-core` 마커가 있으면 실행한다 — 이번 diff 와 무관하다. 낡음은 내 변경이 아니라 정본(`${CLAUDE_PLUGIN_ROOT}/references/claude-md-core.md`) 갱신으로 발생하기 때문이다. 마커가 없는 프로젝트(코어 블록 미삽입)는 스킵된다.
 
 ### Step 2: 조건부 사전 확인
 
@@ -306,7 +305,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - [ ] [test] `src/foo/bar.test.ts` — 실패 테스트 케이스명
 - [ ] [code-reviewer] `src/foo/baz.ts:34` — 표준 에러 클래스 미사용
 - [ ] [doc-reviewer] `docs/PHILOSOPHY.md:42` — [cross-authority-overlap] `docs/architecture.md` 의 role 에 더 적합한 단락
-- [ ] [harness-reviewer] `.claude/skills/qa/SKILL.md:78` — [skill-rnr-overlap] /pr 와 /release 가 같은 작업 양쪽에서 정의
+- [ ] [harness-reviewer] `plugins/<플러그인>/skills/qa/SKILL.md:78` — [skill-rnr-overlap] /pr 와 /release 가 같은 작업 양쪽에서 정의
 - [ ] [security-reviewer] `src/app/api/order/route.ts:45` — [A03: 인젝션] 사용자 입력이 SQL 쿼리에 직접 삽입됨 (parameterized query 필요)
 <!-- finding 그룹화 정책: 같은 파일:line + 같은 위반 유형이면 출처 병기. 예:
 - [ ] [security-reviewer][gemini] `src/foo/bar.ts:23` — [A01: 접근 제어 누락] 인증 게이트 없는 관리자 엔드포인트 (외부 LLM 의견 포함)

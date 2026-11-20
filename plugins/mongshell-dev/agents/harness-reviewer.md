@@ -14,13 +14,13 @@ tools: Read, Grep, Glob, Bash
 
 하네스 루트 아래의 모든 `.md`. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md` 의 "Reviewer 라우팅" 섹션이 단일 권위.
 
-**하네스 루트** 의 정의 — vendored 소비 프로젝트 `.claude/`, 하네스 SSOT 저장소 `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부, 플러그인 소비 프로젝트 없음 — 는 같은 "Reviewer 라우팅" 섹션이 권위다. SSOT 에서 개발 하네스 밖 플러그인까지 받는 건 스킬·에이전트 frontmatter 와 R&R 검증이 플러그인 종류와 무관하기 때문이고, 하네스 수정이 SSOT 에서 일어나므로 거기서 검증이 안 걸리면 사실상 어디서도 안 걸린다.
+**하네스 루트** 의 정의 — 하네스 SSOT 저장소 `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부, 소비 프로젝트 없음 — 는 같은 "Reviewer 라우팅" 섹션이 권위다. SSOT 에서 개발 하네스 밖 플러그인까지 받는 건 스킬·에이전트 frontmatter 와 R&R 검증이 플러그인 종류와 무관하기 때문이고, 하네스 수정이 SSOT 에서 일어나므로 거기서 검증이 안 걸리면 사실상 어디서도 안 걸린다.
 
 그중 **개발 하네스 루트(`$H`)** 는 공통 정의(`README.md` 의 라우팅·공통 분류 등급·작성 가이드, `references/required-docs.md`)가 있는 곳이다. 아래 명령들은 이 블록으로 루트를 확정한 뒤 사용한다:
 
 ```bash
-H=$([ -f .claude/.harness ] && echo .claude || echo plugins/mongshell-dev)    # 개발 하네스 루트
-ROOTS=$([ -f .claude/.harness ] && echo .claude || { [ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort; })   # 하네스 루트 전체 (줄 단위)
+H=plugins/mongshell-dev    # 개발 하네스 루트 (SSOT 저장소의 작업 트리 — 검증 대상인 변경이 여기 있다)
+ROOTS=$([ -f "$H/.claude-plugin/plugin.json" ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort)   # 하네스 루트 전체 (줄 단위) — SSOT 저장소가 아니면 빈 값
 HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' -); HR=${HR:-'^$'}   # 루트 경로 패턴 — 루트가 없으면 어떤 경로와도 안 맞는다
 ```
 
@@ -152,17 +152,17 @@ echo "$ROOTS" | while read -r r; do fd ".*\.md" "$r/agents/" "$r/skills/" -x hea
 ## 검증 findings
 
 ### P0
-- [ ] `[frontmatter-schema-violation]` `.claude/agents/<name>.md:1` — description 필드 누락.
+- [ ] `[frontmatter-schema-violation]` `plugins/<플러그인>/agents/<name>.md:1` — description 필드 누락.
   - 제안: 호출 트리거를 담은 description 추가.
-- [ ] `[skill-rnr-overlap]` `.claude/skills/<name>/SKILL.md:N` — 다른 skill 과 책임 침범
+- [ ] `[skill-rnr-overlap]` `plugins/<플러그인>/skills/<name>/SKILL.md:N` — 다른 skill 과 책임 침범
   - 제안: 어느 skill 이 책임지는지 명확히 분리.
 
 ### P1
-- [ ] `[dispatch-mismatch]` `.claude/skills/<name>/SKILL.md:N` — "<agent> 에게 위임" 이라 적었으나 <agent>.md description 에 해당 skill 출처 명시 없음.
+- [ ] `[dispatch-mismatch]` `plugins/<플러그인>/skills/<name>/SKILL.md:N` — "<agent> 에게 위임" 이라 적었으나 <agent>.md description 에 해당 skill 출처 명시 없음.
   - 제안: agent description 에 호출 출처 추가 또는 SKILL.md 표현 조정.
-- [ ] `[adr-content-mismatch]` `.claude/skills/<name>/SKILL.md:N` — Decision M 인용이 해당 Decision 의 결정·이유와 직접 연결되지 않음.
+- [ ] `[adr-content-mismatch]` `plugins/<플러그인>/skills/<name>/SKILL.md:N` — Decision M 인용이 해당 Decision 의 결정·이유와 직접 연결되지 않음.
   - 제안: 인용 제거 또는 해당 결정을 담은 Decision 으로 교체.
-- [ ] `[exception-clause-accumulation]` `.claude/agents/foo.md:N` — "단, 도메인 외에도 X 수행" 조항이 입력 도메인 분리 원칙을 우회. 제거 또는 명시적 도메인 확장으로 정정 권장.
+- [ ] `[exception-clause-accumulation]` `plugins/<플러그인>/agents/foo.md:N` — "단, 도메인 외에도 X 수행" 조항이 입력 도메인 분리 원칙을 우회. 제거 또는 명시적 도메인 확장으로 정정 권장.
 
 ### P2
 - [ ] ...

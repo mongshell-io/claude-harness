@@ -11,7 +11,7 @@
  *     - DUP_INDEX : 같은 식별자의 인덱스/목차 행이 둘 이상
  *
  * 식별자는 레거시 순번(`6-1`, `76`)과 신규 이슈번호(`#992`, `#992-1`)를 모두 포함하며, `#` 접두는
- *   의미가 있으므로(레거시 vs 신규 구분, harness-decisions.md `Decision #992`) 접두 포함 그대로 대조한다
+ *   의미가 있으므로(레거시 vs 신규 구분) 접두 포함 그대로 대조한다
  *   — 헤더 `## Decision #992` 는 인덱스 `| #992 |` 와만 매칭되고 `| 992 |` 와는 불일치로 잡힌다.
  *
  * supersede 포인터(`→ D47`)의 유효성은 **비목표**다 — 상태 셀이 자유서술이라 파싱이 fuzzy,
@@ -20,8 +20,8 @@
  * 하나라도 불일치면 exit 1.
  *
  * 사용: `node "${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs"` (qa/release 스킬이 프로젝트 루트 cwd 에서 호출). `/qa` 가 decisions
- *   파일 변경 시 호출. cwd 무관 — 스크립트 위치 기준으로 repo 루트를 해석한다
- *   (sibling check-decision-versions.mjs / check-journal-monotonic.mjs 와 동일 패턴).
+ *   파일 변경 시 호출. repo 루트는 실행 cwd 가 속한 git 트리의 루트다 (아래 ROOT 주석 — sibling
+ *   check-decision-versions.mjs 와 같은 방식).
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";

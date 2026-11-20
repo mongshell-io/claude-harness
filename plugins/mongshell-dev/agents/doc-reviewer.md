@@ -13,7 +13,7 @@ tools: Read, Grep, Glob, Bash
 
 ## 입력 도메인
 
-`**/*.md` 중 하네스 루트(vendored 소비 프로젝트 `.claude/`, 하네스 SSOT 저장소 `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부 — 정의 권위는 라우팅 섹션) 밖의 모든 .md 파일. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md` 의 "Reviewer 라우팅" 섹션이 단일 권위.
+`**/*.md` 중 하네스 루트(하네스 SSOT 저장소에만 있다 — `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부. 정의 권위는 라우팅 섹션) 밖의 모든 .md 파일. 소비 프로젝트에는 하네스 루트가 없으므로 모든 .md 가 이 도메인이다. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md` 의 "Reviewer 라우팅" 섹션이 단일 권위.
 
 **검증 분기**: frontmatter(`---` 블록) 가 있는 파일만 권위 검증(role/kind/non_goals 정합성, cross-doc SSOT) 대상. frontmatter 가 없는 .md 는 입력 도메인에 포함되지만 본문 검증은 skip (워크플로우 2 참조).
 
@@ -32,9 +32,8 @@ tools: Read, Grep, Glob, Bash
 
 - 하네스 `references/required-docs.md` 의 "Frontmatter 스키마" 섹션만 read (per-doc contract 섹션은 검증 키에 활용 안 됨):
   ```bash
-  # 개발 하네스 루트(required-docs 위치) — vendored 소비 프로젝트는 .claude/, 하네스 SSOT 저장소는 plugins/mongshell-dev/
-  H=$([ -f .claude/.harness ] && echo .claude || echo plugins/mongshell-dev)
-  sed -n '/^## Frontmatter 스키마/,/^---/p' "$H/references/required-docs.md"
+  # 설치된 플러그인의 required-docs — 이 경로는 에이전트 본문이 로드될 때 실제 경로로 치환된다 (셸 환경변수가 아니다)
+  sed -n '/^## Frontmatter 스키마/,/^---/p' "${CLAUDE_PLUGIN_ROOT}/references/required-docs.md"
   ```
 
 영역별 CLAUDE.md 는 호출 시점에 자동 로드됩니다.

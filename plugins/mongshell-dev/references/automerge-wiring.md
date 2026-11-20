@@ -37,6 +37,7 @@ jobs:
     if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success' }}
     uses: mongshell-io/claude-harness/.github/workflows/automerge.yml@main
     permissions:
+      # actions: read — 재사용 쪽이 트리거한 verify 실행의 잡 목록을 읽어 "모든 잡 success" 를 확인한다.
       actions: read
       contents: write
       pull-requests: write
@@ -47,10 +48,13 @@ jobs:
       # label: automerge              # 기본값과 다를 때만
 ```
 
+**저장소마다 달라도 되는 것**은 넷뿐이다 — `workflows:` 값 · `with:` 의 입력(`deny_paths` · `runner` · `label`) · 머리 주석 둘째 줄이 가리키는 문서 절 이름(상시 코어 블록을 쓰지 않는 저장소는 「정책 노브」 대신 자기 CLAUDE.md 의 머지 규약 절) · 끝의 `# runner:` · `# label:` 안내 주석(지워도 된다). 그 밖(`permissions` · `if:` · `uses:` · 트리거)은 전문 그대로 둔다. `runner` 는 기본값과 다를 때만 적는다.
+
 - **concurrency 를 호출 파일에 두지 않는다** — 재사용 쪽 잡이 PR 단위 concurrency 를 갖는다. 같은 이름의 그룹을 워크플로 단위로 또 두면 교착으로 취소된다.
 - **`permissions` 는 호출 잡에 준다**(`actions: read` · `contents: write` · `pull-requests: write` · `issues: write`) — 재사용 쪽 잡은 그 범위 안에서만 쓴다. `actions: read` 가 빠지면 잡 목록 조회가 403 으로 실패해 자동 머지가 전부 멈춘다(2026-11-18 실측). 덜 주면 재사용 잡이 시작 단계에서 실패한다(머지되지 않음 · fail-closed).
 - **`secrets:` 는 넘기지 않는다** — 재사용 쪽은 호출 저장소의 `github.token` 만 쓴다.
 - 워크플로 디렉토리(`.github/workflows/`)는 `deny_paths` 와 별개로 **재사용 쪽이 항상 거부한다** — 검사 정의(verify)와 호출 파일 자신을 PR 이 자동 머지로 바꾸지 못한다. 정책 노브 줄과 맞추려고 `deny_paths` 에도 적어 두지만, 빠뜨려도 막힌다. `deny_paths` 가 비거나 정규식이 잘못되면 재사용 쪽이 전부 거부한다.
+- `deny_paths` 의 갈래는 정책 노브 「사람이 머지」 문장의 경로와 **하나씩 맞춰** 적는다(디렉토리는 `dir/`, 파일은 `file\.ext$`). 여러 파일을 `[^/]*\.sh$` 같은 패턴 하나로 묶으면 거부 동작은 같아도 `/qa` 가 매번 드리프트 경고를 낸다 — 정책 노브 문장은 리터럴 경로만 적을 수 있다.
 - `deny_paths` 는 **POSIX ERE 만** 쓴다(`\d` · `(?:)` · lookaround 금지) — 러너마다 BSD/GNU grep 이 달라 확장 문법은 한쪽에서만 맞는다.
 - `deny_paths` 는 **한 줄 · 홑따옴표 · `^(갈래|갈래)` 모양**으로 적는다(위 전문처럼) — `/qa` 의 `scripts/risk-paths.sh` 가 그 모양만 읽어 정책 노브와 대조한다. 겹따옴표 · 블록 스칼라(`|` · `>`) · 여러 줄이면 못 읽고 경고만 낸다(가드 동작은 같다).
 - 자동 머지는 base 가 저장소 기본 브랜치인 PR 만 한다 — 다른 브랜치를 향한 PR(스택 PR 등)은 라벨이 있어도 건너뛴다.
@@ -68,7 +72,7 @@ jobs:
 
 - **verify 의 잡을 라벨 `if:` 필터로 전부 건너뛰게 해도 자동 머지는 일어나지 않는다** — 재사용 쪽이 트리거한 verify 실행의 잡 목록을 읽어 잡이 1개 이상이고 모든 잡이 `success` 일 때만 진행한다(skipped · cancelled 가 하나라도 있으면 건너뜀). 그래서 다른 라벨의 `labeled` 실행이 앞선 검사 실패를 덮지 못한다.
 - **verify 안에 automerge 잡을 남기지 않는다** — 옮긴 뒤 옛 `automerge` 잡(`needs: [static, test]`)은 지운다. 두 경로가 같은 PR 을 동시에 머지하려 하면 한쪽이 405 로 실패한다(재사용 쪽은 같은 커밋이 머지됐으면 통과로 보지만 옛 잡은 그렇지 않다).
-- **선택: 라벨 이벤트의 concurrency 분리** — verify 의 `concurrency.group` 에 라벨 이벤트를 따로 두면 라벨 붙이기가 진행 중인 코드 검사 실행을 취소하지 않는다(a2s 방식).
+- **선택: 라벨 이벤트의 concurrency 분리** — verify 의 `concurrency.group` 에 라벨 이벤트를 따로 두면 라벨 붙이기가 진행 중인 코드 검사 실행을 취소하지 않는다(auction2sell 방식).
 
   ```yaml
   concurrency:
