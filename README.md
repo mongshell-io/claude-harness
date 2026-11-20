@@ -100,5 +100,7 @@ claude-harness/
 │   ├── templates/                    #   앱 저장소 설정 정본
 │   └── scripts/                      #   스킬이 부르는 결정적 검사
 ├── plugins/mongshell-ops/            # 운영 도구 (OpenClaw Slack 브리지)
-└── checks/                           # @mongshell/checks — 앱 저장소 공용 check:*
+├── checks/                           # @mongshell/checks — 앱 저장소 공용 check:*
+├── tools/                            # 이 저장소 유지보수용 (배포되지 않음) — lint.mjs · consumers.sh
+└── CLAUDE.md                         # 이 저장소를 고칠 때의 규칙 (영향 범위 · 검증 · 머지)
 ```
