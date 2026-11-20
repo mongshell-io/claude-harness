@@ -34,8 +34,12 @@ command -v jq >/dev/null || { echo "jq 가 없습니다" >&2; exit 1; }
 CORE_SSOT=$(grep -o 'harness-core: [0-9-]*' "$ROOT/plugins/mongshell-dev/references/claude-md-core.md" | head -1 | sed 's/harness-core: //')
 CHECKS_SSOT=$(git -C "$ROOT" log -1 --format=%H origin/main -- checks 2>/dev/null || git -C "$ROOT" log -1 --format=%H -- checks)
 
-# 저장소 기본 브랜치의 파일 내용(stdout). 없으면 exit 1.
-raw() { gh api -H 'Accept: application/vnd.github.raw' "repos/$ORG/$1/contents/$2" 2>/dev/null; }
+# 저장소 기본 브랜치의 파일 내용(stdout). 없으면 출력 없이 exit 1 — gh 는 404 일 때도 오류 JSON 을 stdout 에 내므로 버린다.
+raw() {
+	local out
+	out=$(gh api -H 'Accept: application/vnd.github.raw' "repos/$ORG/$1/contents/$2" 2>/dev/null) || return 1
+	printf '%s\n' "$out"
+}
 
 # 워크플로 파일들에서 하네스 참조의 ref 를 모은다 (예: @main). 없으면 빈 값.
 ref_of() { # <저장소> <하네스 경로 조각>
