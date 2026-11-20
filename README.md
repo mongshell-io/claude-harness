@@ -96,7 +96,7 @@ claude-harness/
 │   ├── README.md                     #   흐름도·라우팅·공통 정의·본문 작성 가이드 (cross-cutting 정의의 권위)
 │   ├── agents/                       #   architect·developer·*-reviewer
 │   ├── skills/                       #   절차 스킬(create-issue·plan·qa·pr·review-comments·release) + 규율 스킬
-│   ├── references/                   #   필요할 때 읽는 문서 — 각 파일 frontmatter `role` 이 자기 설명
+│   ├── references/                   #   필요할 때 읽는 문서 — 각 파일 머리말이 자기 설명
 │   ├── templates/                    #   앱 저장소 설정 정본
 │   └── scripts/                      #   스킬이 부르는 결정적 검사
 ├── plugins/mongshell-ops/            # 운영 도구 (OpenClaw Slack 브리지)
