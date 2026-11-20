@@ -149,14 +149,6 @@ GitHub Release 에 사용할 notes 문자열을 메모리상에서 조립한다.
 
 - Changes 는 `gh issue list --milestone "<식별자>" --state closed --json title,labels` 로 자동 수집하고 `type` 라벨(`type:feat` / `type:fix` / `type:chore` / `type:refactor`)로 그룹핑한다 (라벨 3축 정의 권위: create-issue 스킬).
 - 마일스톤이 없으면 Changes 절을 생략하고 요약 줄만 포함한다.
-- **도입 버전 드리프트 검사 (read-only — 스크립트)**: Decision 의 `**도입**` 라인은 **생성물**이고, 채우는 주체는 `/qa` 의 write 게이트다 (`--write` — 릴리스 다음에 오는 아무 PR 이 실어 나른다). `/release` 는 그 게이트가 돌았는지만 읽기 전용으로 확인한다. **결정 문서(`docs/architecture-decisions.md` 또는 `docs/harness-decisions.md`)가 있을 때만 실행한다** — 하나도 없으면 스크립트가 문서 부재를 오류(exit 1)로 내 STALE 과 구분되지 않으므로 이 검사를 건너뛴다.
-  ```bash
-  node "${CLAUDE_PLUGIN_ROOT}/scripts/check-decision-versions.mjs"
-  ```
-  - **STALE** (릴리스로 값이 확정됐는데 문서 미반영) 이 있으면 exit 1 + `파일:line → 버전` 목록. 정상 흐름이면 나오지 않는다 — 나왔다면 **직전 릴리스 이후 `/qa` 를 한 번도 안 거친 PR 만 머지됐다**는 신호다. warn 후 목록을 제시하고, 다음 `/qa` 가 자동 확정한다고 안내한다.
-  - **PENDING** (이번 릴리스에 나가는 Decision — 값이 아직 존재하지 않음) 은 정상 상태다. 정보성 출력만 하고 exit 에 영향을 주지 않는다. 이번 태깅 후 다음 PR 의 `/qa` 가 확정한다.
-  - 이 검사는 **게이트락이 아니다** (경고만 — 목록 제시 후 confirm 없이 진행 가능). 미머지 Decision 의 placeholder 는 정상(검출 안 됨).
-  - `/release` 는 파일을 수정하지 않는다는 불변식은 그대로다. **후속 doc PR 을 안내하지 않는다** — 전용 chore PR 은 이 설계에서 사라졌다.
 
 조립 형식:
 
@@ -296,8 +288,6 @@ gh api -X PATCH repos/{owner}/{repo}/milestones/{N} -f state=closed
 | `push origin vX.Y.Z` 거부 (중복 tag) | fetch → tag max 재계산 → 해당 버전 이미 존재 시 "다른 세션이 이미 릴리스함" stop |
 | `gh release create` "already exists" | 정상으로 간주하고 계속 진행 |
 | destructive 마이그레이션 구문 발견 (Step 1b-B) | warn + confirm 대기. 사용자 확인 시 계속, 취소 시 stop |
-| STALE 도입 버전 발견 (Step 2, `check-decision-versions.mjs` exit 1) | warn + 목록 제시, confirm 없이 진행 — `/qa` write 게이트 미실행 신호. 다음 `/qa` 가 자동 확정 (게이트락 아님) |
-| PENDING 도입 버전 (Step 2) | 정상 — 정보성 출력만. 이번 태깅 후 다음 PR 의 `/qa` 가 확정 |
 
 ---
 
@@ -307,4 +297,4 @@ gh api -X PATCH repos/{owner}/{repo}/milestones/{N} -f state=closed
 - git tag · GitHub Release · milestone 은 **본 스킬이 단일 동기화 경로** — 직접 `git tag` / `gh release create` / milestone close 금지.
 - **릴리스 효과: origin/main 태깅 + gh release/milestone close. main 에 push 하지 않는다** — PR squash merge 가 origin/main 을 갱신하는 유일한 경로다.
 - 코드 편집은 이 스킬 범위 외. **파일 편집 없음** — 릴리스가 커밋을 만들지 않는다 (버전 SSOT = git tag max — 파일에 버전을 쓰면 SSOT 가 갈라진다). `package.json version` 은 `0.0.0` 동결, 문서(.md) 편집도 없다.
-- `docs/architecture-decisions.md` / `docs/harness-decisions.md` 는 이 스킬의 수정 대상이 아니다. Decision 도입 버전은 `/qa` 의 write 게이트가 채우는 **생성물**이다 — `/release` 는 태깅만 하고, 확정된 값은 다음 PR 이 실어 나른다. 전용 chore PR 을 만들지 않는다.
+- `docs/architecture-decisions.md` / `docs/harness-decisions.md` 는 이 스킬의 수정 대상이 아니다. 결정 문서에는 버전을 적지 않으므로 릴리스 뒤에 채울 것도 없다.

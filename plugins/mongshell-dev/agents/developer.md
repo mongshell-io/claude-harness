@@ -79,7 +79,7 @@ git ls-files -- '<프로젝트소스디렉토리>' | grep '<테스트파일패�
 
 > **self-gate 원칙**: 이 검증은 "깨진 상태로 caller(메인 세션)에게 넘기지 않기 위한 완료 조건"이다. caller 가 결합 상태 판정을 별도 수행할 수 있으나(2층 검증 모델 — `plan/SKILL.md` 4b-1 참조), developer 자체검증은 그와 독립적으로 항상 수행한다. **REPORT 의 exit-code(숫자) 보고가 메인의 4b-1 skip 신뢰 근거이므로, exit code 는 반드시 숫자로 명기한다** (예: `exit 0` / `exit 2`).
 
-테스트 / typecheck / lint 세 종류를 실행한다. 구체 명령은 프로젝트의 영역별 `CLAUDE.md` 또는 `docs/development.md` 가 권위.
+테스트 / typecheck / lint 를 실행한다. 구체 명령은 프로젝트의 영역별 `CLAUDE.md` 또는 `docs/development.md` 가 권위.
 
 세 명령은 독립이라 병렬 실행 가능. **실패 시 완료 전에 수정.**
 

@@ -52,7 +52,7 @@ mongshell-io 저장소들이 같이 쓰는 Claude Code 하네스의 단일 원�
 
 ## 이식 가이드
 
-새 프로젝트에 하네스를 도입할 때.
+새 프로젝트에 하네스를 도입할 때. **1 · 2 만 해도 하네스는 동작합니다** — 3 이하는 프로젝트가 그 문서 · 설정을 둘 때 따르는 것이고, 없으면 거기에 기대는 단계만 건너뜁니다([권위 문서 부재 시 동작](plugins/mongshell-dev/README.md#권위-문서-부재-시-동작-공통-계약)).
 
 1. **플러그인 설치** (위).
 2. **루트 CLAUDE.md 상시 코어** 삽입 (위 정본).
@@ -82,7 +82,7 @@ gh label create area:meta --color f9d0c4 --description "비-코드 작업 (하�
    - 브라우저 익스텐션이 있는 저장소 — [extension-structure.md](plugins/mongshell-dev/references/extension-structure.md)
    - 인프라 함정 모음 — [infra-gotchas.md](plugins/mongshell-dev/references/infra-gotchas.md)
 
-> 검증 스크립트 배선은 필요 없습니다 — qa/release 스킬이 `${CLAUDE_PLUGIN_ROOT}/scripts/…` 로 직접 호출합니다. package.json alias 를 만들지 마세요 — 플러그인 캐시 경로는 버전마다 바뀝니다.
+> 검증 스크립트 배선은 필요 없습니다 — qa 스킬이 `${CLAUDE_PLUGIN_ROOT}/scripts/…` 로 직접 호출합니다. package.json alias 를 만들지 마세요 — 플러그인 캐시 경로는 버전마다 바뀝니다.
 
 ## 구조
 

@@ -35,7 +35,7 @@ tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 
 ### 1. UNDERSTAND
 
-분석 시작 전 다음 4가지를 명확히 합니다:
+분석 시작 전 다음을 명확히 합니다:
 
 - **무엇을 제안하는가** — 한 줄 요약
 - **신규(additive) vs 변경(modificative)** — 이 구분에 따라 회귀 위험을 보는 축이 갈린다. 신규는 패턴 일관성 / Entity SSOT, 변경은 기존 호출자 영향이 핵심.

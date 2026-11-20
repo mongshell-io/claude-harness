@@ -10,7 +10,7 @@ non_goals:
 
 # 브라우저 익스텐션 구조 표준
 
-브라우저 익스텐션이 있는 mongshell-io 앱 저장소(sellcaddie · k2sell · quick2sell · auction2sell 등)는 모두 이 구조를 따른다. 저장소마다 빌드 도구 · 폴더 · 아이콘 상태가 달라 관리자가 매번 다르게 손보던 시간을 없애려는 것이다(스택을 일정하게). 표준 확정 2026-11-19.
+브라우저 익스텐션이 있는 mongshell-io 앱 저장소(sellcaddie · k2sell · auction2sell 등)는 모두 이 구조를 따른다. 저장소마다 빌드 도구 · 폴더 · 아이콘 상태가 달라 관리자가 매번 다르게 손보던 시간을 없애려는 것이다(스택을 일정하게). 표준 확정 2026-11-19.
 
 ## 위치
 
@@ -24,17 +24,23 @@ non_goals:
 - 폴더 이름: 기본은 `extension/`, 추가분은 **`extension-<용도>/`**(예: `extension-public/`).
 - **폴더마다 이 문서 전체를 따른다** — 자체 `package.json` · lockfile · WXT · `dist`/`dist-dev` · `public/icon/` 네 장 · 같은 스크립트 이름 · `README.md` 첫 절의 Chrome 로드 안내. 아래 절의 `extension/` 은 각 폴더 이름으로 바꿔 읽는다.
 - dependabot npm `directories` 에 폴더마다 한 줄씩(`/extension` · `/extension-public` …) 넣는다.
-- **앱 코드(컴포넌트 · 엔진)를 공유해야 하면 복사하지 않는다.** `wxt.config.ts` 의 vite `resolve.alias` 로 저장소 루트 `src/` 를 가져온다. 별도 번들러(esbuild 등)로 따로 묶지 않는다.
+- **앱 코드(컴포넌트 · 엔진)를 공유해야 하면 복사하지 않는다.** 저장소 루트 `src/` 를 alias 로 가져온다. 별도 번들러(esbuild 등)로 따로 묶지 않는다.
+  - 앱 코드는 서로를 앱의 alias(보통 `@/…`)로 부른다. 그 import 가 그대로 풀리려면 익스텐션에서도 `@` 가 루트 `src/` 여야 하는데, WXT 는 `@` 를 자기 `srcDir` 로 잡고 설정에 적은 alias 보다 그 기본값을 우선한다. 그래서 설정이 정해진 뒤(`config:resolved` 훅)에 바꾼다 — vite resolve 와 `.wxt/tsconfig.json` 의 paths 가 함께 따른다.
+  - 그러면 익스텐션 자신의 파일은 `@/` 로 부를 수 없다. 상대 경로로만 import 한다.
+  - 앱 코드가 쓰는 react 등은 익스텐션 패키지의 것 하나로 묶는다(`resolve.dedupe`) — 두 벌이면 훅이 깨진다.
   ```ts
   import { fileURLToPath } from "node:url";
+  const appSrc = fileURLToPath(new URL("../src", import.meta.url));
   export default defineConfig({
     // ...위 표준 항목
-    vite: () => ({
-      resolve: { alias: { "@app": fileURLToPath(new URL("../src", import.meta.url)) } },
-    }),
+    vite: () => ({ resolve: { dedupe: ["react", "react-dom"] } }),
+    hooks: {
+      "config:resolved": (wxt) => {
+        wxt.config.alias["@"] = appSrc;
+      },
+    },
   });
   ```
-  alias 이름은 앱이 쓰는 것(예: 앱의 `@/`)과 맞추면 공유 코드 안의 import 가 그대로 풀린다.
 - 앱 화면을 함께 쓰는 익스텐션은 **앱과 같은 Tailwind 설정 · 같은 버전**을 쓴다(설정은 루트 것을 가져오거나 루트 설정을 확장). 버전이 갈리면 같은 컴포넌트가 다르게 그려진다.
 
 ## 스택
@@ -65,12 +71,20 @@ export default defineConfig({
 
 `extension/dist/` 와 `extension/dist-dev/` 는 git 에서 뺀다(WXT 가 만드는 `extension/.wxt/` 도 함께).
 
+### 스토어용 묶음이 운영 빌드와 달라야 할 때
+
+웹 스토어에 올리는 묶음에서 개발 서버 주소 · 권한을 빼야 하는 익스텐션은 **환경 변수**로 가른다(예: `zip` 스크립트가 `<접두>_STORE=1 wxt zip`). 사용자 정의 `--mode` 는 쓰지 않는다 — vite 가 압축 · `NODE_ENV` 를 운영과 다르게 다뤄 묶음 내용이 달라진다.
+
+- 그 변수가 켜졌을 때만 `outDirTemplate` 을 `"../dist-store"` 로 바꾼다. zip 은 그대로 `extension/dist/<name>-<버전>-chrome.zip` 에 생긴다.
+- 뺄 것은 `build:manifestGenerated` 훅에서 매니페스트를 고쳐 뺀다.
+- `extension/dist-store/` 도 git 에서 뺀다.
+
 ## 아이콘 (필수)
 
 - `extension/public/icon/16.png` · `32.png` · `48.png` · `128.png` 네 장.
 - WXT 0.21 의 public 기본 위치는 익스텐션 폴더 바로 아래 `public/` 이다(`srcDir` 안이 아니다). 이 이름 · 위치면 WXT 가 매니페스트 `icons` 에 자동으로 등록하므로 매니페스트에 따로 적지 않는다.
 - 투명 배경. 앱 아이콘에서 만든다.
-- 앱 아이콘이 없으면 단색 둥근 사각형에 흰 글자 하나(quick2sell 의 「Q」가 사례).
+- 앱 아이콘이 없으면 단색 둥근 사각형에 흰 글자 하나.
 - 16px 에서 알아볼 수 있는지 눈으로 확인한다 — 툴바에 보이는 크기다.
 
 ## 스크립트 이름
