@@ -11,7 +11,7 @@ non_goals:
 
 이 문서는 두 가지 역할을 합니다: **(1) 하네스 흐름도** 와 **(2) 여러 reviewer·skill 이 공유하는 cross-cutting 정의의 단일 권위** (Reviewer 라우팅 / 공통 분류 등급 / 검증 명령 실행 책임 / 본문 작성 가이드). 개별 skill·agent 의 상세 동작은 각 SKILL.md / agent frontmatter 가 권위입니다.
 
-이 하네스는 **플러그인(mongshell-dev)** 으로 배포되는 것이 기본이고, 예외적으로 일부 프로젝트에는 파일 복사(vendored)로 배포됩니다. vendored 배포본은 생성물이므로 직접 수정하지 않습니다 — SSOT 저장소에서 고친 뒤 재배포합니다. 배포 채널·이유는 SSOT 저장소 README 가 권위입니다.
+이 하네스는 **플러그인(mongshell-dev)** 으로만 배포됩니다 — 소비 프로젝트에 사본을 두지 않고, 수정은 SSOT 저장소에서 합니다. 설치·이식 절차는 SSOT 저장소 README 가 권위입니다.
 
 ---
 
@@ -82,7 +82,7 @@ flowchart LR
 
 **Reviewer 라우팅의 단일 권위**. 다른 SKILL/agent 본문은 본 표만 참조합니다.
 
-변경 파일을 입력 도메인으로 분기 — caller(`/qa`, developer self-round, `/review-comments` 등) 가 동등하게 참조하는 단일 권위.
+변경 파일을 입력 도메인으로 분기 — caller(`/qa`, `/plan` 의 라운드 리뷰)가 동등하게 참조하는 단일 권위.
 
 | 입력 도메인 | Reviewer | 상태 |
 |---|---|---|
@@ -94,11 +94,10 @@ flowchart LR
 > \* `security-reviewer` 의 `/plan` 루프 제외 등 호출시점 정책은 qa 스킬의 "/plan 자동 iteration 과의 책임 경계" 표 참조.
 
 > **하네스 루트 정의** (이 표와 reviewer·`/qa` 의 도메인 판정이 공통으로 쓰는 권위):
-> - **vendored 소비 프로젝트** — `.claude/` 하나 (`.claude/.harness` 마커로 판정).
 > - **하네스 SSOT 저장소** (`plugins/mongshell-dev/.claude-plugin/plugin.json` 이 있는 저장소) — `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부. 개발 하네스(이 플러그인)뿐 아니라 같은 저장소의 다른 플러그인(운영 도구 등)도 harness-reviewer 로 간다 — 새 플러그인도 `plugin.json` 만 있으면 따로 등록하지 않아도 이 도메인에 든다.
-> - **플러그인 소비 프로젝트** — 없음 (harness 도메인 공집합). 자기 `plugins/<이름>/` 이나 `plugin.json` 을 가진 프로젝트라도 SSOT 저장소가 아니면 마찬가지다.
+> - **소비 프로젝트** (그 밖의 모든 저장소) — 없음 (harness 도메인 공집합). 자기 `plugins/<이름>/` 이나 `plugin.json` 을 가진 프로젝트라도 SSOT 저장소가 아니면 마찬가지다.
 >
-> 공통 정의(이 README 의 라우팅·공통 분류 등급·작성 가이드, `references/required-docs.md`)의 위치는 **개발 하네스 루트**(vendored `.claude/`, SSOT `plugins/mongshell-dev/`) 하나다. 판정 명령은 harness-reviewer `## 입력 도메인` 과 `/qa` Step 1 이 같은 블록을 쓴다.
+> 공통 정의(이 README 의 라우팅·공통 분류 등급·작성 가이드, `references/required-docs.md`)은 개발 하네스 한 곳에만 있다. 스킬 · 에이전트는 설치된 플러그인 루트(`${CLAUDE_PLUGIN_ROOT}`)의 것을 읽고, harness-reviewer 만 SSOT 저장소 작업 트리(`plugins/mongshell-dev/`)의 것을 읽는다 — 검증 대상이 그 파일이라서. 판정 명령은 harness-reviewer `## 입력 도메인` 과 `/qa` Step 1 이 같은 블록을 쓴다.
 
 > **코드 도메인 정의**: "프로젝트 toolchain 입력 코드" 의 구체 확장자는 영역별 `CLAUDE.md` 또는 `docs/development.md` 의 lint/typecheck/test 명령 대상이 권위. toolchain 외 파일 (이미지/lock/data 등) 의 처리는 아래 "도메인 외 입력 정책" 참조.
 
@@ -181,7 +180,7 @@ skill / agent 가 참조하는 프로젝트 권위 문서(`docs/**`, 영역별 `
 
 ## 호출 방식
 
-- **절차 스킬** (`/create-issue` · `/plan` · `/qa` · `/pr` · `/review-comments` · `/release`) — 명시 호출 전용. 개발 흐름에 영향을 주므로 우발적 실행을 막는다.
+- **절차 스킬** (`/create-issue` · `/plan` · `/qa` · `/pr` · `/review-comments` · `/release`) — 사용자의 명시 호출로 시작한다. 개발 흐름에 영향을 주므로 모델이 상황을 보고 스스로 시작하지 않는다. 다른 절차 스킬이 자기 절차의 한 단계로 부르는 것(`/pr` 이 통과 기록이 없을 때 `/qa --branch` 를, `/plan` 이 이슈화할 때 `/create-issue` 를)은 각 SKILL.md 가 정한 대로다.
 - **규율 스킬** (`verification-before-completion` · `systematic-debugging`) — 상황이 트리거라 명시 호출 없이 적용한다. 각 SKILL.md 의 description 이 적용 조건을 말하고, 메인 세션과 developer 가 그 상황(완료 주장 직전 · 버그를 만났을 때)에서 스스로 따른다. 판단 기준과 순서를 더할 뿐 새 실행 흐름(위임 · commit · 외부 발신)을 열지 않으므로 우발적 실행의 위험이 없다 — 위임 여부는 여전히 루트 `CLAUDE.md` 오케스트레이터 규칙이 정한다.
 
 규율 스킬은 [obra/superpowers](https://github.com/obra/superpowers) (MIT) 에서 옮겨 왔다 — 라이선스 고지는 [LICENSE.superpowers](./LICENSE.superpowers).
@@ -190,7 +189,7 @@ skill / agent 가 참조하는 프로젝트 권위 문서(`docs/**`, 영역별 `
 
 이 하네스 본문에 들어가면 안 되는 도메인 키워드. 새 agent/skill 작성 또는 기존 파일 수정 시 참조.
 
-**적용 범위**: 임의의 소비 프로젝트로 배포되는 개발 하네스(이 플러그인과 그 vendored 사본) 한정. 같은 SSOT 저장소의 다른 플러그인은 특정 운영 환경을 잇는 것이 목적이라 채널·봇 ID 같은 개인 운영 값을 담을 수 있다.
+**적용 범위**: 임의의 소비 프로젝트에서 그대로 동작해야 하는 본문 — 이 플러그인의 `agents/` · `skills/` · 이 README, 그리고 스킬 · 에이전트가 읽는 `references/` 문서(이식 계약 등). 대상이 아닌 것: (1) 이 플러그인의 **조직 표준 문서** — 스킬 · 에이전트가 읽지 않는 `references/` 문서(저장소를 맞출 때 여는 배선 · 설정 · 구조 표준 · 함정 모음)와 `templates/`, 상시 코어 블록의 프로젝트 값 기본치. mongshell-io 저장소들의 공통 값을 적는 것이 목적이라 저장소 이름 · 스택 · 설정 값을 그대로 담는다. (2) 같은 SSOT 저장소의 다른 플러그인 — 특정 운영 환경을 잇는 것이 목적이라 채널·봇 ID 같은 개인 운영 값을 담을 수 있다.
 
 - **영역별 경로** — 예: `docs/`, `src/lib/`, `src/components/`, `src/app/api/` 등 프로젝트 종속 경로. 대신 "영역별 `CLAUDE.md`" / "프로젝트 디렉토리" 등으로 일반화.
 - **빌드/검증 명령어** — 프로젝트 스택 종속 명령 (`pnpm test:run`, `pnpm typecheck`, `pnpm lint`, `pnpm db:push`, `pnpm build` 등). 대신 "테스트 명령", "typecheck 명령", "lint 명령" 등 역할 표현 + "구체 명령은 `docs/development.md` 또는 영역별 `CLAUDE.md` 권위" 위임.

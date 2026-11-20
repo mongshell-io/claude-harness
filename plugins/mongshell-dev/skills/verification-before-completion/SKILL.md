@@ -18,7 +18,7 @@ description: >-
 - commit · push · PR 생성 · 작업 체크오프 · 다음 작업으로 넘어가기 직전
 - developer 가 "완료" 를 보고했을 때 (메인 세션 쪽)
 
-적용 대상은 메인 세션과 developer 다. reviewer 는 하네스 README "검증 명령 실행 책임" 에 따라 검증 명령을 실행하지 않는다.
+적용 대상은 메인 세션과 developer 다. reviewer 는 하네스 README(`${CLAUDE_PLUGIN_ROOT}/README.md`) "검증 명령 실행 책임" 에 따라 검증 명령을 실행하지 않는다.
 
 상황이 트리거인 규율 스킬이라 명시 호출 없이 적용한다 (하네스 README "호출 방식").
 

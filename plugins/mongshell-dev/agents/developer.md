@@ -42,7 +42,7 @@ rg "pattern" --type <언어>
 git grep "keyword"
 
 # 기존 테스트 (테스트 파일 패턴·위치는 영역별 CLAUDE.md 권위)
-fd "<테스트파일패턴>" <프로젝트소스디렉토리>
+git ls-files -- '<프로젝트소스디렉토리>' | grep '<테스트파일패턴>'
 ```
 
 - 해당 디렉토리의 `CLAUDE.md` 우선 — 영역별 패턴/SSOT (Entity 타입, API 응답 규약 등) 가 거기 명시

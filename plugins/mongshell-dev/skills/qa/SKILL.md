@@ -10,7 +10,7 @@ description: >-
 
 # /qa
 
-작업 마무리 직전 검증 단일 진입점. 변경 도메인을 매칭해 toolchain 검증(bash)과 reviewer(Agent)들을 병렬 실행하고, 결과를 공통 분류 등급(하네스 README § "공통 분류 등급")으로 통일 분류해 리포트한다. **어떤 검증이 언제 도는지의 단일 권위 = Step 1 조건표** (옵션 정의는 Step 0 — 다른 곳에 매트릭스를 복제하지 않는다). .md 파일의 frontmatter 깨짐은 로딩 시점에 자연 검출된다.
+작업 마무리 직전 검증 단일 진입점. 변경 도메인을 매칭해 toolchain 검증(bash)과 reviewer(Agent)들을 병렬 실행하고, 결과를 공통 분류 등급(`${CLAUDE_PLUGIN_ROOT}/README.md` § "공통 분류 등급" — 아래에서 「하네스 README」 는 이 파일)으로 통일 분류해 리포트한다. **어떤 검증이 언제 도는지의 단일 권위 = Step 1 조건표** (옵션 정의는 Step 0 — 다른 곳에 매트릭스를 복제하지 않는다). .md 파일의 frontmatter 깨짐은 로딩 시점에 자연 검출된다.
 
 ## 언제 호출하는가
 
@@ -24,7 +24,7 @@ description: >-
 
 | 측면 | `/plan` 안 라운드 리뷰 | `/qa` 사이클 종합 검증 |
 |------|---------------------|---------------------|
-| 시점 | 라운드 단위 (자동, Iteration 1..3 루프 — `P0 == 0` 까지) | 작업 마무리 / 사이클 종료 (사용자 명시 호출) |
+| 시점 | 라운드 단위 (자동, Iteration 1..3 루프 — P0 · P1 0건까지) | 작업 마무리 / 사이클 종료 (사용자 명시 호출) |
 | RANGE | 해당 라운드의 좁은 diff | 누적 변경 (기본 / `--branch`) |
 | 검증 수행 | 검증 명령(bash) + 라우팅 매칭 reviewer (`security-reviewer` 제외) | Step 1 조건표 (RANGE·opt-in 반영) |
 | browser 검증 | **미포함** (라운드 루프 전용 아님 — 사이클 게이트 전용) | `--branch` + UI 변경 시만 (Preview MCP 기반, opt-in 없음) |
@@ -77,10 +77,9 @@ rm -rf "$QA_TMP" && mkdir -p "$QA_TMP"
 # --diff-filter=d : deleted 파일 제외 (reviewer 가 부재 파일 검사 시도 방지)
 QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 git diff $RANGE --name-only --diff-filter=d -- '*.md' > "$QA_TMP/md-changed.txt" 2>/dev/null || true
-# 하네스 루트 — vendored 소비 프로젝트는 .claude/ (.claude/.harness = sync 가 생성하는 vendored 마커),
-# 하네스 SSOT 저장소는 .claude-plugin/plugin.json 을 가진 plugins/<이름>/ 전부. 플러그인 소비 프로젝트는 없음 → harness 도메인 공집합이 정상.
+# 하네스 루트 — 하네스 SSOT 저장소는 .claude-plugin/plugin.json 을 가진 plugins/<이름>/ 전부. 소비 프로젝트는 없음 → harness 도메인 공집합이 정상.
 # 정의의 권위는 하네스 README "Reviewer 라우팅" — 이 블록은 harness-reviewer 와 같은 판정이다.
-ROOTS=$([ -f .claude/.harness ] && echo .claude || { [ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort; })
+ROOTS=$([ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort || true)
 HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' -); HR=${HR:-'^$'}   # 루트가 없으면 어떤 경로와도 안 맞는다
 grep -Ev "$HR" "$QA_TMP/md-changed.txt" > "$QA_TMP/doc-domain.txt" 2>/dev/null || true    # doc-reviewer 도메인
 grep -E "$HR" "$QA_TMP/md-changed.txt" > "$QA_TMP/harness-domain.txt" 2>/dev/null || true  # harness-reviewer 도메인
@@ -114,7 +113,7 @@ git diff $RANGE --name-only | grep -E '<ui-path-pattern>' > "$QA_TMP/ui-changed.
 
 - **DB schema 경로 변경 여부**: 변경 파일 목록에 DB schema 경로(권위: DB 영역 CLAUDE.md — 구체 경로 패턴은 해당 문서 참조)가 포함되면 schema 정합성 검사를 실행 목록에 추가한다. schema 정합성은 (a) 마이그레이션 dirty + (b) ERD 산출물 staleness 두 검사를 함께 수행한다 (구체 명령·경로 권위: 동일 CLAUDE.md).
 - **decisions 도입 버전 확정의 조건**: `docs/architecture-decisions.md` 또는 `docs/harness-decisions.md` 존재 여부만 본다 — 이번 diff 가 그 파일을 건드렸는지는 무관하다 (이유는 Step 2). 결정 문서가 하나도 없는 프로젝트에서 스킵해야 하는 이유는 스크립트가 문서 부재를 루트 해석 실패로 판정하기 때문이다.
-- **harness-core 마커 정합의 조건**: 루트 `CLAUDE.md` 에 `harness-core` 마커가 있으면 실행한다 — 이번 diff 와 무관하다. 낡음은 내 변경이 아니라 정본(`${CLAUDE_PLUGIN_ROOT}/references/claude-md-core.md`) 갱신으로 발생하기 때문이다. 마커가 없는 프로젝트(코어 블록 미삽입) 와 `CLAUDE_PLUGIN_ROOT` 가 없는 vendored 소비 프로젝트는 스킵된다.
+- **harness-core 마커 정합의 조건**: 루트 `CLAUDE.md` 에 `harness-core` 마커가 있으면 실행한다 — 이번 diff 와 무관하다. 낡음은 내 변경이 아니라 정본(`${CLAUDE_PLUGIN_ROOT}/references/claude-md-core.md`) 갱신으로 발생하기 때문이다. 마커가 없는 프로젝트(코어 블록 미삽입)는 스킵된다.
 
 ### Step 2: 조건부 사전 확인
 
@@ -306,7 +305,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - [ ] [test] `src/foo/bar.test.ts` — 실패 테스트 케이스명
 - [ ] [code-reviewer] `src/foo/baz.ts:34` — 표준 에러 클래스 미사용
 - [ ] [doc-reviewer] `docs/PHILOSOPHY.md:42` — [cross-authority-overlap] `docs/architecture.md` 의 role 에 더 적합한 단락
-- [ ] [harness-reviewer] `.claude/skills/qa/SKILL.md:78` — [skill-rnr-overlap] /pr 와 /release 가 같은 작업 양쪽에서 정의
+- [ ] [harness-reviewer] `plugins/<플러그인>/skills/qa/SKILL.md:78` — [skill-rnr-overlap] /pr 와 /release 가 같은 작업 양쪽에서 정의
 - [ ] [security-reviewer] `src/app/api/order/route.ts:45` — [A03: 인젝션] 사용자 입력이 SQL 쿼리에 직접 삽입됨 (parameterized query 필요)
 <!-- finding 그룹화 정책: 같은 파일:line + 같은 위반 유형이면 출처 병기. 예:
 - [ ] [security-reviewer][gemini] `src/foo/bar.ts:23` — [A01: 접근 제어 누락] 인증 게이트 없는 관리자 엔드포인트 (외부 LLM 의견 포함)
@@ -332,6 +331,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - schema 정합성 (마이그레이션 + ERD 산출물): ✅ Passed / ❌ Failed / ⏭️ DB schema 경로 변경 없음 — 스킵
 - decisions 인덱스 정합: ✅ Passed / ❌ Failed (exit 1 — MISSING/DANGLING/중복/NO_SECTION) / ⏭️ decisions 파일 변경 없음 — 스킵
 - Decision 도입 버전: ✅ 확정할 것 없음 / 🔧 N건 자동 확정 — 이번 커밋에 포함하세요 (`파일:line → vX.Y.Z` 목록) / ⏭️ 결정 문서 없음 — 스킵
+- harness-core 마커: ✅ 정본과 같음 / ⚠️ 낡음 (`루트 CLAUDE.md = … / 정본 = …`) / ⏭️ 마커 없음 — 스킵
 - browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
 - `code-reviewer`: ✅ 완료 / ⏭️ `--skip-code-review` 사용자 명시 스킵
 - REVIEW.md 트리거: 공통: C1 / 없음 · 프로젝트: R2 · R5 / 없음 / 해당 없음 (파일 없음) / 해당 없음 (origin/main ref 없음) (두 칸 따로, 예: `공통: C1 · 프로젝트: 해당 없음 (파일 없음)`) / ⏭️ code-reviewer 미호출 — 스킵 (code-reviewer 결과 그대로, fetch 실패 문구가 있으면 덧붙임 — `references/review-checklist.md`)
@@ -500,7 +500,7 @@ marker 내용은 Step 5 와 동일한 형식이다 — 개수는 승계 도메�
 ## 제약
 
 - 검증만 수행한다. 코드 자동 수정 X. 수정은 사용자 결정 후 `developer` 서브에이전트에 위임한다.
-- 의도된 자동화 예외(node_modules 자동 설치, schema 정합성 자동 실행, decisions 도입 버전 자동 확정)는 Step 2 참조. 셋 다 **결정론적 생성물의 재생성**이지 판단이 필요한 수정이 아니다.
+- 의도된 자동화 예외(node_modules 자동 설치 · decisions 도입 버전 자동 확정 = Step 2, schema 정합성 자동 실행 = Step 1 조건표 · Step 3a). 셋 다 **결정론적 생성물의 재생성**이지 판단이 필요한 수정이 아니다.
 - 메인 세션이 절차를 오케스트레이션한다. QA 검증 효과:
   - 코드 변경 (프로젝트 toolchain 입력) 은 `developer` 서브에이전트에 위임
   - 문서 / 하네스 편집은 X — Agent 호출 + bash 검증만 수행 (예외: 위 도입 버전 자동 확정 — 모델이 아니라 스크립트가 결정론적으로 쓴다)

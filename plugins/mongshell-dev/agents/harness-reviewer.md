@@ -12,15 +12,15 @@ tools: Read, Grep, Glob, Bash
 
 ## 입력 도메인
 
-하네스 루트 아래의 모든 `.md`. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md` 의 "Reviewer 라우팅" 섹션이 단일 권위.
+하네스 루트 아래의 모든 `.md`. 라우팅 표 / 도메인 외 입력 정책은 하네스 `README.md`(아래 `$H/README.md` — 검증 대상인 작업 트리의 것) 의 "Reviewer 라우팅" 섹션이 단일 권위.
 
-**하네스 루트** 의 정의 — vendored 소비 프로젝트 `.claude/`, 하네스 SSOT 저장소 `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부, 플러그인 소비 프로젝트 없음 — 는 같은 "Reviewer 라우팅" 섹션이 권위다. SSOT 에서 개발 하네스 밖 플러그인까지 받는 건 스킬·에이전트 frontmatter 와 R&R 검증이 플러그인 종류와 무관하기 때문이고, 하네스 수정이 SSOT 에서 일어나므로 거기서 검증이 안 걸리면 사실상 어디서도 안 걸린다.
+**하네스 루트** 의 정의 — 하네스 SSOT 저장소 `.claude-plugin/plugin.json` 을 가진 `plugins/<이름>/` 전부, 소비 프로젝트 없음 — 는 같은 "Reviewer 라우팅" 섹션이 권위다. SSOT 에서 개발 하네스 밖 플러그인까지 받는 건 스킬·에이전트 frontmatter 와 R&R 검증이 플러그인 종류와 무관하기 때문이고, 하네스 수정이 SSOT 에서 일어나므로 거기서 검증이 안 걸리면 사실상 어디서도 안 걸린다.
 
 그중 **개발 하네스 루트(`$H`)** 는 공통 정의(`README.md` 의 라우팅·공통 분류 등급·작성 가이드, `references/required-docs.md`)가 있는 곳이다. 아래 명령들은 이 블록으로 루트를 확정한 뒤 사용한다:
 
 ```bash
-H=$([ -f .claude/.harness ] && echo .claude || echo plugins/mongshell-dev)    # 개발 하네스 루트
-ROOTS=$([ -f .claude/.harness ] && echo .claude || { [ -f plugins/mongshell-dev/.claude-plugin/plugin.json ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort; })   # 하네스 루트 전체 (줄 단위)
+H=plugins/mongshell-dev    # 개발 하네스 루트 (SSOT 저장소의 작업 트리 — 검증 대상인 변경이 여기 있다)
+ROOTS=$([ -f "$H/.claude-plugin/plugin.json" ] && find plugins -maxdepth 3 -path 'plugins/*/.claude-plugin/plugin.json' | sed 's#/\.claude-plugin/plugin\.json$##' | sort || true)   # 하네스 루트 전체 (줄 단위) — SSOT 저장소가 아니면 빈 값
 HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' -); HR=${HR:-'^$'}   # 루트 경로 패턴 — 루트가 없으면 어떤 경로와도 안 맞는다
 ```
 
@@ -29,15 +29,16 @@ HR=$(printf '%s\n' "$ROOTS" | sed '/^$/d; s#\.#\\.#g; s#.*#^&/#' | paste -sd'|' 
 1. **수집** — 변경된 하네스 `.md` 파일을 git 으로 추출하고, agent / skill / README / 기타로 분류한다
 2. **컨텍스트 구축** — 컨텍스트 섹션의 필수 read 문서를 적재하고, 하네스 파일 풀에서 대조 후보를 좁힌다
 3. **검증** — syntactic 정합성 + 단일 파일 정합성 + cross-cutting R&R 정합성 + 낭비 패턴을 다중 키로 점검한다
-4. **분류** — findings 를 공통 분류 등급(`${CLAUDE_PLUGIN_ROOT}/README.md` § "공통 분류 등급")으로 분류한다
+4. **분류** — findings 를 공통 분류 등급(`$H/README.md` § "공통 분류 등급")으로 분류한다
 5. **리포트** — 파일별 위반 사항을 line 번호와 함께 actionable 한 리포트로 합산한다
 
 ## 컨텍스트
 
-**필수 read 문서** (harness-reviewer 가 호출되면 매번 의식. 루트 `CLAUDE.md` 는 자동 로드 — main-orchestration-violation 키 적용 시 자동 로드 본문 참조):
+**필수 read 문서** (harness-reviewer 가 호출되면 매번 의식):
 
 - 하네스 파일 풀(하네스 루트마다 `agents/**`·`skills/*/SKILL.md`·`README.md`, 그리고 `$H/references/required-docs.md`) — 인덱스로 대조 후보를 좁혀 컨텍스트를 구성 (상세: 워크플로우 Step 3).
 - Decision 파일 — `adr-content-mismatch` 검증 시 조건부 read (워크플로우 Step 4 참조).
+- `$H/references/claude-md-core.md` 의 「오케스트레이터」 조항 — `main-orchestration-violation` 판정 시 조건부 read.
 
 > frontmatter 스키마 권위: agent(name/description)·skill(name/description) 스키마는 Claude Code harness 자체 정의 (외부) — 본 프로젝트 내부 정의 없음. 권위 문서(role/kind/non_goals) 스키마 정의의 SSOT 는 하네스 `references/required-docs.md` 의 "Frontmatter 스키마" 섹션이며, 검증은 도메인별 분담(하네스 루트 밖의 `docs/` 등 = doc-reviewer, 하네스 권위 문서 = harness-reviewer 의 `frontmatter-schema-violation` 키).
 
@@ -78,7 +79,7 @@ git diff $RANGE -- <대상 파일>                           # 변경 내용
 
 ```bash
 echo "$ROOTS" | while read -r r; do ls "$r/agents/" "$r/skills/" 2>/dev/null; done
-echo "$ROOTS" | while read -r r; do fd ".*\.md" "$r/agents/" "$r/skills/" -x head -n 10 2>/dev/null; done   # frontmatter 스캔
+echo "$ROOTS" | while read -r r; do find "$r/agents" "$r/skills" -name '*.md' -print -exec head -n 10 {} \; 2>/dev/null; done   # frontmatter 스캔
 ```
 
 플러그인이 달라도 같은 세션에 함께 설치되므로 skill 트리거·책임 겹침은 루트를 가로질러 본다.
@@ -107,7 +108,7 @@ echo "$ROOTS" | while read -r r; do fd ".*\.md" "$r/agents/" "$r/skills/" -x hea
 - `skill-rnr-overlap` — skill A 와 skill B 의 책임이 침범·중복. 예: /pr vs /release 가 같은 작업 양쪽에서 정의.
 - `agent-rnr-overlap` — agent A 와 agent B 의 책임이 분리되지 않음. 예: developer 가 리뷰까지, code-reviewer 가 수정까지.
 - `dispatch-mismatch` — skill 의 본문이 "agent X 에게 위임" 이라 적었는데 agent X 의 description/본문에는 그 호출 출처가 명시 안 됨, 또는 그 반대. skill ↔ agent 의 호출 책임 분담 불일치.
-- `main-orchestration-violation` — skill/agent 명세가 루트 CLAUDE.md 메인 세션 규칙의 위임 판단 기준(병렬성 / 메인 컨텍스트 격리 / 신선한 독립 리뷰)을 위반 — 즉 그 기준상 위임이 값하는 실질 구현을 메인 세션이 직접 Edit/Write 하도록 명세된 경우. 자명한 변경(한 줄·오타·기계적 텍스트 교정)의 직접 편집은 위반 아님. 위임 판단 기준·'자명한 변경' 경계의 SSOT = 루트 CLAUDE.md 메인 세션 규칙(자동 로드) — 본 키는 그 기준을 집행만 하고 재정의하지 않는다. `/pr` 처럼 의도된 예외는 명시되어 있으면 OK.
+- `main-orchestration-violation` — skill/agent 명세가 상시 코어 「오케스트레이터」 조항(`$H/references/claude-md-core.md` 의 블록 — 소비 프로젝트 루트 `CLAUDE.md` 에 복사되는 정본)의 위임 판단 기준(병렬성 / 메인 컨텍스트 격리 / 신선한 독립 리뷰)을 위반 — 즉 그 기준상 위임이 값하는 실질 구현을 메인 세션이 직접 Edit/Write 하도록 명세된 경우. 자명한 변경(한 줄·오타·기계적 텍스트 교정)의 직접 편집은 위반 아님. 위임 판단 기준·'자명한 변경' 경계의 SSOT = 그 「오케스트레이터」 조항 — 본 키는 그 기준을 집행만 하고 재정의하지 않는다. `/pr` 처럼 의도된 예외는 명시되어 있으면 OK.
 - `adr-content-mismatch` — 하네스 `.md` 본문이 특정 Decision (`Decision N` / `Decision #N` / `(Decision N 참조)` / `[Decision N](...)`) 를 인용했지만, `docs/harness-decisions.md` 또는 `docs/architecture-decisions.md` 의 해당 Decision 본문의 결정·이유·결과 중 어느 것과도 직접 연결되지 않는 맥락에서 사용됨. 잘못된 권위 부여. (신규 결정은 이슈번호로 식별 — `Decision #N`.)
 - `exception-clause-accumulation` — 단서 조항이 쌓여 skill·agent 의 입력 도메인 분리와 책임 경계가 흐려지는 경우 (예: "도메인 외에도 X 수행"). 공통 판정 기준은 하네스 `README.md` § "예외 조항 누적 검증".
 
@@ -152,17 +153,17 @@ echo "$ROOTS" | while read -r r; do fd ".*\.md" "$r/agents/" "$r/skills/" -x hea
 ## 검증 findings
 
 ### P0
-- [ ] `[frontmatter-schema-violation]` `.claude/agents/<name>.md:1` — description 필드 누락.
+- [ ] `[frontmatter-schema-violation]` `plugins/<플러그인>/agents/<name>.md:1` — description 필드 누락.
   - 제안: 호출 트리거를 담은 description 추가.
-- [ ] `[skill-rnr-overlap]` `.claude/skills/<name>/SKILL.md:N` — 다른 skill 과 책임 침범
+- [ ] `[skill-rnr-overlap]` `plugins/<플러그인>/skills/<name>/SKILL.md:N` — 다른 skill 과 책임 침범
   - 제안: 어느 skill 이 책임지는지 명확히 분리.
 
 ### P1
-- [ ] `[dispatch-mismatch]` `.claude/skills/<name>/SKILL.md:N` — "<agent> 에게 위임" 이라 적었으나 <agent>.md description 에 해당 skill 출처 명시 없음.
+- [ ] `[dispatch-mismatch]` `plugins/<플러그인>/skills/<name>/SKILL.md:N` — "<agent> 에게 위임" 이라 적었으나 <agent>.md description 에 해당 skill 출처 명시 없음.
   - 제안: agent description 에 호출 출처 추가 또는 SKILL.md 표현 조정.
-- [ ] `[adr-content-mismatch]` `.claude/skills/<name>/SKILL.md:N` — Decision M 인용이 해당 Decision 의 결정·이유와 직접 연결되지 않음.
+- [ ] `[adr-content-mismatch]` `plugins/<플러그인>/skills/<name>/SKILL.md:N` — Decision M 인용이 해당 Decision 의 결정·이유와 직접 연결되지 않음.
   - 제안: 인용 제거 또는 해당 결정을 담은 Decision 으로 교체.
-- [ ] `[exception-clause-accumulation]` `.claude/agents/foo.md:N` — "단, 도메인 외에도 X 수행" 조항이 입력 도메인 분리 원칙을 우회. 제거 또는 명시적 도메인 확장으로 정정 권장.
+- [ ] `[exception-clause-accumulation]` `plugins/<플러그인>/agents/foo.md:N` — "단, 도메인 외에도 X 수행" 조항이 입력 도메인 분리 원칙을 우회. 제거 또는 명시적 도메인 확장으로 정정 권장.
 
 ### P2
 - [ ] ...

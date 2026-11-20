@@ -1,5 +1,5 @@
 ---
-role: "mongshell-io 앱 저장소 CI 잡이 하네스 공용 composite action `setup-node-pnpm` 을 부르는 배선 — 표준 잡 모양(checkout → setup-node-pnpm → 검사) · 입력 · node_modules 를 남기는 workspace 정리 스니펫."
+role: "mongshell-io 저장소 CI 잡이 하네스 공용 composite action `setup-node-pnpm` 을 부르는 배선 — 표준 잡 모양(checkout → setup-node-pnpm → 검사) · 입력 · node_modules 를 남기는 workspace 정리 스니펫."
 kind: operational
 non_goals:
   - "Node · corepack · pnpm 준비 로직 자체와 그 이유(사고 기록) — 하네스 `.github/actions/setup-node-pnpm/action.yml` 이 권위"
@@ -66,6 +66,8 @@ jobs:
 
 - 러너 대수(「맥북 N대 · 러너 N개」) · 설치 스크립트 경로 · 러너 그룹 · 머신 이름을 워크플로 주석에 옮겨 적지 않는다 — 권위는 mongshell-io/runner-infra 하나다.
 - 저장소 고유의 근거(과금 이력 · 잡 분리 · timeout 이유 · 이슈 참조 · 지난 사고 기록)는 두 줄 아래에 그대로 둔다.
+- 이 규칙이 막는 것은 **지금의 러너 배치를 서술하는 문장**이다(파일 어디에 있든 — 스텝 주석의 「같은 맥북의 러너 N개」도 해당). 지난 사고 기록이 그때의 러너 이름을 적은 것은 기록이므로 그대로 둔다.
+- 러너를 설치하는 저장소(mongshell-io/runner-infra) 자신의 워크플로도 self-hosted 풀을 쓰면 같은 두 줄을 둔다.
 
 ## 선택: node_modules 를 남기는 workspace 정리 (self-hosted)
 
