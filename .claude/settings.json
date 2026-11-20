@@ -1,0 +1,13 @@
+{
+	"extraKnownMarketplaces": {
+		"mongshell": {
+			"source": {
+				"source": "github",
+				"repo": "mongshell-io/claude-harness"
+			}
+		}
+	},
+	"enabledPlugins": {
+		"mongshell-dev@mongshell": true
+	}
+}
