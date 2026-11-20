@@ -56,6 +56,14 @@
  *                    든 것(`다시 볼 조건` · `넘어간 것 (후속 …)` · `폐기 조건` · `대체 관계`)은 지금 참인 조항이라
  *                    통과한다. 모양이 맞아도 이름이 이력이면 덧댄 것이라 이것만은 낱말로 본다 — 목록 밖 이름으로 덧댄
  *                    것, 소제목 꼴의 `### ` 이하 소제목은 리뷰 몫이다.
+ *   inline-mark      본문 블록 안, 코드 펜스 밖의 줄에 **갱신 표시**가 있다 — 조항은 그대로 두고 그 안이나 바로 아래에
+ *                    바뀐 내용을 표시와 함께 끼운 것이다. 모양(소제목 · 항목)이 맞아도 걸리지 않고 조항 안에 숨어 있어,
+ *                    세 저장소에서 수십 곳이 남은 것을 보고 이것도 낱말로 본다. 잡는 표시는 넷이다: `🔄`, `⚠️` 바로
+ *                    뒤(굵은 표시 · `N항` 은 건너뛴다)의 `갱신` · `재갱신` · `정정` · `개정` · `재개정` · `번복`
+ *                    (`⚠️ 갱신됨 #12` · `⚠️ **3항 갱신 — #12**`), 괄호를 연 바로 뒤의 같은 낱말 + 쌍점
+ *                    (`(개정: Decision #12 — …)`), 취소선(`~~…~~` — 지운 글은 지금 참이 아니다). 인라인 코드 안은 보지
+ *                    않는다. `⚠️ **한계** — … 갱신된다` 처럼 낱말이 문장 뒤쪽에 든 경고는 지금 참인 조항이라 통과한다.
+ *                    다른 종류로 이미 낸 줄은 다시 내지 않는다.
  * 설정:
  *   stale-pending    `pending` 의 경로가 없는 파일이거나, 검사 대상 Decision 파일이 아니거나, 그 파일에 위반이 없다.
  *
@@ -127,6 +135,17 @@ const LABEL_PREFIX = /^(?:Decision\s+#?\d+|결정\s*\d+|D\d+|§\s*\d+|#?\d+|\([^
 const HISTORY_LABEL = /^(?:후속|정정|번복|적용 기록|개정|재개정|보강|재결정|갱신|반전|부분 (?:수정|갱신|대체|폐기)|amend)/i;
 /** 이름 안의 괄호가 이력 낱말로 시작하는 것 — `결과 (개정)` · `검증(개정 2)`. 구획 이름은 지금 참인데 괄호가 「바뀐 판」 임을 밝힌다. */
 const HISTORY_PAREN = /[(（]\s*(?:개정|재개정|갱신|정정|번복|amend)/i;
+/** 조항 안에 끼운 갱신 표시가 쓰는 낱말. */
+const MARK_WORD = "(?:재?갱신|정정|재?개정|번복)";
+/** 인라인 코드 — 표시를 설명하려고 적은 글자는 표시가 아니다. */
+const INLINE_CODE = /`[^`\n]*`/g;
+/** 조항 안에 끼운 갱신 표시. `⚠` 뒤의 이형 선택자(U+FE0F)는 있어도 없어도 같은 글자다. */
+const INLINE_MARKS = [
+	/🔄/,
+	new RegExp(`⚠\\uFE0F?\\s*\\*{0,2}\\s*(?:\\d+(?:\\s*[·,]\\s*\\d+)*항\\s*)?${MARK_WORD}`),
+	new RegExp(`[(（]\\s*${MARK_WORD}\\s*[:：]`),
+	/~~[^~\n]+~~/,
+];
 
 /** 줄 머리의 모양에 붙이는 이름 — 메시지에서 끼어든 줄이 무엇인지 알린다. 위에서부터 처음 맞는 것. */
 const LINE_SHAPES = [
@@ -151,7 +170,7 @@ const REWRITE_HINT = "바뀐 내용은 해당 조항을 지금 참인 것만 남
 const BLOCK_START_SHAPES = "`## 소제목`(소제목 꼴) 또는 `- **라벨**` 항목(목록 꼴)";
 
 /**
- * @typedef {"bad-head" | "id-mismatch" | "head-overlay" | "stray-block" | "extra-title" | "history-label"} FileViolationKind
+ * @typedef {"bad-head" | "id-mismatch" | "head-overlay" | "stray-block" | "extra-title" | "history-label" | "inline-mark"} FileViolationKind
  * @typedef {{ kind: FileViolationKind, msg: string, lines: number[] }} Violation 파일 하나 안의 위반 — `lines` 는 고칠 자리(1부터 센 줄 번호).
  * @typedef {{ text: string, line: number }} ContentLine 파일의 비어 있지 않은 줄.
  * @typedef {{ kind: string, msg: string, at: string[] }} Finding 출력할 위반 하나 — `at` 은 고칠 자리(`경로:줄` 또는 경로).
@@ -358,6 +377,31 @@ function judgeHeadingBody(id, lines, from) {
 }
 
 /**
+ * 본문 블록 안, 코드 펜스 밖의 줄에 끼운 갱신 표시.
+ * @param {string} id
+ * @param {string[]} lines
+ * @param {number} from 블록 시작 줄의 배열 위치(0부터).
+ * @param {Violation[]} already 이미 찾은 위반 — 그 줄은 다시 내지 않는다.
+ * @returns {Violation[]}
+ */
+function judgeInlineMarks(id, lines, from, already) {
+	const taken = new Set(already.flatMap((v) => v.lines));
+	const marked = readLinesOutsideFences(lines, from).filter((l) => {
+		if (taken.has(l.line)) return false;
+		const text = l.text.replace(INLINE_CODE, "");
+		return INLINE_MARKS.some((pattern) => pattern.test(text));
+	});
+	if (marked.length === 0) return [];
+	return [
+		{
+			kind: "inline-mark",
+			msg: `Decision ${id} 의 조항 안에 갱신 표시가 있습니다(${summarizeLines(marked)}) — 표시와 함께 끼운 글은 그 조항을 이기는 두 번째 권위가 됩니다. ${REWRITE_HINT} 지운 글(취소선)은 남기지 않습니다 — 바뀌기 전 내용은 git 이 갖습니다.`,
+			lines: marked.map((l) => l.line),
+		},
+	];
+}
+
+/**
  * Decision 파일 하나의 위반을 찾는다 (순수 함수).
  * @param {string[]} lines 파일을 줄 단위로 나눈 배열.
  * @param {string} fileId 파일 이름에서 확장자를 뺀 것 — 첫 줄 식별자에서 `#` 를 뗀 것과 같아야 한다.
@@ -403,7 +447,8 @@ export function findDecisionViolations(lines, fileId, { archived = false } = {})
 	const body = SECTION_HEADING.test(blockStart.text)
 		? judgeHeadingBody(id, lines, blockStart.line - 1)
 		: judgeListBody(id, content.slice(blockAt));
-	return [...found, ...body];
+	const shaped = [...found, ...body];
+	return [...shaped, ...judgeInlineMarks(id, lines, blockStart.line - 1, shaped)];
 }
 
 // ── 출력 ───────────────────────────────────────────────────────────────────
