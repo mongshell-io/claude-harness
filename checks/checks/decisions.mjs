@@ -48,11 +48,14 @@
  *   extra-title      (소제목 꼴) 코드 펜스 밖에 `# ` 제목이 첫 줄 말고 또 있다 — 한 파일에 Decision 이 둘이거나 구획을
  *                    제목 급으로 적은 것이다.
  *   history-label    최상위 `- **라벨**` 항목(목록 꼴) 또는 코드 펜스 밖 `## ` 소제목(소제목 꼴)이 **이력 이름**이다.
- *                    굵은 표시를 걷고 머리의 번호(`Decision 7` · `결정 3` · `#12` · 날짜) · 괄호 · 구분 기호를 벗긴 뒤
- *                    `후속` · `정정` · `번복` · `적용 기록` · `개정` · `보강` · `재결정` · `갱신` · `부분 수정` ·
- *                    `부분 갱신` · `amend` 로 **시작**하면 잡는다. 이름 중간에 그 낱말이 든 것(`다시 볼 조건` ·
- *                    `넘어간 것 (후속 …)`)은 지금 참인 조항이라 통과한다. 모양이 맞아도 이름이 이력이면 덧댄 것이라
- *                    이것만은 낱말로 본다 — 목록 밖 이름으로 덧댄 것, 소제목 꼴의 `### ` 이하 소제목은 리뷰 몫이다.
+ *                    굵은 표시를 걷고 머리의 번호(`Decision 7` · `결정 3` · `#12` · `§3` · 날짜) · 괄호 · 구분 기호를
+ *                    벗긴 뒤 `후속` · `정정` · `번복` · `적용 기록` · `개정` · `재개정` · `보강` · `재결정` · `갱신` ·
+ *                    `반전` · `부분 수정` · `부분 갱신` · `부분 대체` · `부분 폐기` · `amend` 로 **시작**하면 잡는다.
+ *                    이름 안의 괄호가 `개정` · `재개정` · `갱신` · `정정` · `번복` · `amend` 로 시작해도 잡는다
+ *                    (`결과 (개정)` · `검증(개정 2)` — 구획의 「바뀐 판」 을 따로 덧붙인 것이다). 이름 중간에 그 낱말이
+ *                    든 것(`다시 볼 조건` · `넘어간 것 (후속 …)` · `폐기 조건` · `대체 관계`)은 지금 참인 조항이라
+ *                    통과한다. 모양이 맞아도 이름이 이력이면 덧댄 것이라 이것만은 낱말로 본다 — 목록 밖 이름으로 덧댄
+ *                    것, 소제목 꼴의 `### ` 이하 소제목은 리뷰 몫이다.
  * 설정:
  *   stale-pending    `pending` 의 경로가 없는 파일이거나, 검사 대상 Decision 파일이 아니거나, 그 파일에 위반이 없다.
  *
@@ -118,10 +121,12 @@ const TOP_FENCE = /^ ?(```|~~~)/;
 /** 코드 펜스 표식 (소제목 꼴 — 들여쓰기와 무관하게 읽고, 표식의 글자와 길이를 잡는다). */
 const FENCE_MARKER = /^\s*(`{3,}|~{3,})(.*)$/;
 
-/** 이름 머리에서 벗겨 내는 것 — 번호(`Decision 7` · `결정 3` · `D7` · `#12` · 날짜의 숫자) · 괄호 · 구분 기호. */
-const LABEL_PREFIX = /^(?:Decision\s+#?\d+|결정\s*\d+|D\d+|#?\d+|\([^)]*\)|[\s[\]「」(·,:—–/-])+/i;
+/** 이름 머리에서 벗겨 내는 것 — 번호(`Decision 7` · `Decision #6-1` · `결정 3` · `D7` · `#12` · `§3` · 날짜의 숫자) · 괄호 · 다른 절을 가리키는 인용(`"… 개정" 절`) · 구분 기호. */
+const LABEL_PREFIX = /^(?:Decision\s+#?\d+|결정\s*\d+|D\d+|§\s*\d+|#?\d+|\([^)]*\)|"[^"]*"\s*절|[\s[\]「」(·,:—–/-])+/i;
 /** 이력 이름의 접두 낱말 — 지금 참인 규칙이 아니라 바뀐 경위를 적는 항목 · 소제목이다. `amend` 는 `amendment` 도 덮는다. */
-const HISTORY_LABEL = /^(?:후속|정정|번복|적용 기록|개정|보강|재결정|갱신|부분 (?:수정|갱신)|amend)/i;
+const HISTORY_LABEL = /^(?:후속|정정|번복|적용 기록|개정|재개정|보강|재결정|갱신|반전|부분 (?:수정|갱신|대체|폐기)|amend)/i;
+/** 이름 안의 괄호가 이력 낱말로 시작하는 것 — `결과 (개정)` · `검증(개정 2)`. 구획 이름은 지금 참인데 괄호가 「바뀐 판」 임을 밝힌다. */
+const HISTORY_PAREN = /[(（]\s*(?:개정|재개정|갱신|정정|번복|amend)/i;
 
 /** 줄 머리의 모양에 붙이는 이름 — 메시지에서 끼어든 줄이 무엇인지 알린다. 위에서부터 처음 맞는 것. */
 const LINE_SHAPES = [
@@ -243,8 +248,8 @@ function summarizeLines(contentLines) {
  * @param {string} rest 줄에서 머리 표식(`-` · `##`)을 뗀 나머지.
  * @returns {boolean}
  */
-function isHistoryName(rest) {
-	return HISTORY_LABEL.test(rest.replaceAll("*", "").replace(LABEL_PREFIX, ""));
+function isHistoryName(rest, name) {
+	return HISTORY_LABEL.test(rest.replaceAll("*", "").replace(LABEL_PREFIX, "")) || HISTORY_PAREN.test(name);
 }
 
 // ── 파일 하나의 판정 ────────────────────────────────────────────────────────
@@ -300,7 +305,7 @@ function judgeListBody(id, body) {
 		});
 	}
 
-	const historyItems = topLines.filter((l) => TOP_ITEM_LABEL.test(l.text) && isHistoryName(l.text.slice(1)));
+	const historyItems = topLines.filter((l) => TOP_ITEM_LABEL.test(l.text) && isHistoryName(l.text.slice(1), TOP_ITEM_LABEL.exec(l.text)?.[1] ?? ""));
 	if (historyItems.length > 0) {
 		const [first, ...rest] = historyItems;
 		const label = TOP_ITEM_LABEL.exec(first.text)?.[1] ?? "";
@@ -338,7 +343,7 @@ function judgeHeadingBody(id, lines, from) {
 		});
 	}
 
-	const historyHeadings = outside.filter((l) => SECTION_HEADING.test(l.text) && isHistoryName(l.text.slice(2)));
+	const historyHeadings = outside.filter((l) => SECTION_HEADING.test(l.text) && isHistoryName(l.text.slice(2), l.text.slice(2)));
 	if (historyHeadings.length > 0) {
 		const label = historyHeadings[0].text.slice(2).trim();
 		const more = historyHeadings.length > 1 ? ` 외 ${historyHeadings.length - 1}개` : "";
