@@ -883,21 +883,20 @@ describe("decisions — run", () => {
 describe("decisions — 켜야 돈다 (새 판을 받는 것만으로는 아무 저장소에서도 돌지 않는다)", () => {
 	const KNOWN = Object.keys(CHECKS);
 
-	it("검사로 등록돼 있다 — 옛 한 파일 형식의 decision-banners 와 함께", () => {
+	it("검사로 등록돼 있다", () => {
 		assert.ok(KNOWN.includes("decisions"));
-		assert.ok(KNOWN.includes("decision-banners"));
 		assert.equal(CHECKS.decisions.run, run);
 	});
 
 	it("`all` 은 package.json 의 check:* 만 돌린다 — 스크립트가 없는 저장소에서는 이 검사가 불리지 않는다", () => {
-		const scripts = { check: "mongshell-check all", "check:journal": "mongshell-check journal", "check:decision-banners": "mongshell-check decision-banners" };
+		const scripts = { check: "mongshell-check all", "check:journal": "mongshell-check journal", "check:ui-barrel": "mongshell-check ui-barrel" };
 
-		assert.deepEqual(selectCheckScripts(scripts).names, ["check:journal", "check:decision-banners"]);
+		assert.deepEqual(selectCheckScripts(scripts).names, ["check:journal", "check:ui-barrel"]);
 	});
 
 	it("켜지 않은 저장소는 새 판을 받아도 설정 검증에 걸리지 않는다", () => {
-		const pkg = { scripts: { "check:journal": "mongshell-check journal", "check:decision-banners": "mongshell-check decision-banners" } };
-		const config = { checks: { journal: {}, "decision-banners": {} } };
+		const pkg = { scripts: { "check:journal": "mongshell-check journal", "check:ui-barrel": "mongshell-check ui-barrel" } };
+		const config = { checks: { journal: {}, "ui-barrel": {} } };
 
 		assert.deepEqual(validateConfigShape(config, enabledCheckNames(pkg), KNOWN), []);
 	});

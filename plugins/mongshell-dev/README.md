@@ -139,12 +139,16 @@ flowchart LR
 
 ## Decision 참조 검증 (adr-content-mismatch 공통 절차)
 
-`doc-reviewer` 와 `harness-reviewer` 가 공유하는 `adr-content-mismatch` 검증 알고리즘. 각 reviewer 는 아래 절차를 따르되, **read 대상 파일과 검출 도메인만 자기 영역을 채운다**.
+`doc-reviewer` 와 `harness-reviewer` 가 공유하는 `adr-content-mismatch` 검증 알고리즘. 각 reviewer 는 아래 절차를 따르되, **read 대상 폴더와 검출 도메인만 자기 영역을 채운다**.
 
 1. 정규식 `Decision (#?\d+(?:-\d+)?)` 으로 변경 .md 본문에서 Decision 참조 검출 — 레거시 순번(`Decision 76`)과 신규 이슈 식별자(`Decision #992`)를 모두 잡고, 캡처 그룹은 `#` 를 포함한다.
-2. 참조가 1개 이상 발견된 경우에만 `<read-target>` 을 read (조건부 — 참조 없으면 read 불필요).
+2. 참조가 1개 이상 발견된 경우에만, 참조된 Decision 의 파일(`<read-target>/<식별자에서 # 를 뗀 것>.md`)을 read (조건부 — 참조 없으면 read 불필요). `<read-target>` 폴더 자체가 없는 프로젝트는 권위 문서 부재다 — 그 폴더를 대상으로 하는 대조를 전부 건너뛴다(§ "권위 문서 부재 시 동작").
 3. 각 참조마다:
-   - **존재성**: `<read-target>` 에 `## Decision <참조 식별자>` 헤더 존재하는가 (`#` 접두 포함해 그대로 대조 — 신규는 `## Decision #992`). 없으면 **P0** (`존재하지 않는 Decision`).
+   - **존재성**: 「있다」 는 `<read-target>` 폴더 **바로 아래**에 그 파일이 있다는 뜻이다(`archive/` 는 세지 않는다).
+     - 폴더 바로 아래에 있고 첫 줄이 `# Decision <참조 식별자>:` 다(`#` 접두까지 같다 — `Decision #992` 는 `992.md` 의 `# Decision #992:`) → 통과, 맥락 정합성으로 넘어간다.
+     - 폴더 바로 아래에 있는데 첫 줄의 `#` 접두가 인용과 다르다(`Decision 992` 인용 ↔ `# Decision #992:`) → **P1** (`식별자 표기 불일치 — 인용을 그 파일 첫 줄의 식별자로 고친다`). 맥락 정합성은 그 파일로 본다.
+     - 폴더 바로 아래에는 없고 `archive/` 에만 있다 → **P1** (`폐기된 Decision 인용 — 대체한 Decision 으로 바꾸거나 인용 제거 권장`). 맥락 정합성은 보지 않는다. 인용 문장이 그 Decision 의 폐기 · 대체 사실 자체를 밝히는 경우(「Decision 12 는 폐기됐다 — X 를 다시 도입하지 않는다」)는 위반이 아니다.
+     - 어디에도 없다 → **P0** (`존재하지 않는 Decision`). 다만 `#N-M` 인용의 `<N>-<M>.md` 가 없고 `<N>.md` 가 있으면 먼저 그 폴더의 `README.md` 를 본다 — `#N-M` 을 「Decision #N 의 M항」 으로 쓰는 프로젝트면 `<N>.md` 로 대조한다.
    - **맥락 정합성**: 참조한 본문 단락이 해당 Decision 본문의 결정·이유·결과 중 하나와 의미적으로 연결되는가. 무관하면 **P1** (`맥락 부적합 — 의도된 Decision 추정 또는 인용 제거 권장`).
    - **부분 연결** (Decision 본문의 부수 문장과 일치하지만 핵심과 거리감): false positive 회피 차원에서 `adr-content-mismatch` 로 잡지 않음.
 4. 다중 참조 (`Decision 2 / Decision 8` 처럼) 시 각 Decision 독립 판정. 하나라도 맥락 불일치면 어느 N 이 문제인지 명시.
@@ -154,8 +158,8 @@ flowchart LR
 
 | reviewer | read-target | 검출 도메인 |
 |---|---|---|
-| `doc-reviewer` | `docs/architecture-decisions.md` — 인용이 `harness-decisions.md` 를 파일 이름과 함께 밝혔으면 그 인용만 `docs/harness-decisions.md` (판정 규칙은 doc-reviewer 본문) | `**/*.md` 중 하네스 루트 밖 |
-| `harness-reviewer` | `docs/harness-decisions.md` + `docs/architecture-decisions.md` (양쪽 — 같은 식별자가 둘 다에 있으면 doc-reviewer 본문의 표기 규칙) | 하네스 루트 아래 `**/*.md` |
+| `doc-reviewer` | `docs/architecture-decisions/` — 인용이 `harness-decisions` 를 이름과 함께 밝혔으면 그 인용만 `docs/harness-decisions/` (판정 규칙은 doc-reviewer 본문) | `**/*.md` 중 하네스 루트 밖 |
+| `harness-reviewer` | `docs/harness-decisions/` + `docs/architecture-decisions/` (양쪽 — 같은 식별자가 둘 다에 있으면 doc-reviewer 본문의 표기 규칙) | 하네스 루트 아래 `**/*.md` |
 
 ---
 
@@ -196,7 +200,7 @@ skill / agent 가 참조하는 프로젝트 권위 문서(`docs/**`, 영역별 `
 - **외부 의존 스택** — 사용 중인 ORM / 큐 / 인증 / 빌드 도구 이름 (예: Next.js, Drizzle, shadcn, Vitest, Biome). 대신 역할 표현 ("DB 마이그레이션 명령", "테스트 러너", "린터").
 - **도메인 / 비즈니스 용어** — 프로젝트 이름, 핵심 도메인명, 표준 에러 클래스명 등. 대신 "이 프로젝트" / "프로젝트의 표준 에러 패턴" 등.
 - **정책 수치** — 라벨 목록, 구체 버전 패턴 등 프로젝트마다 달라지는 값.
-- **하네스 카운트 표현** — "N종" / "N가지" 같이 하네스 안의 검증 단계 / 서브에이전트 / 도구 등을 정량 카운트하는 표현. 하네스 변경마다 본문 동기화 부담이 누적되고, 의미가 다른 카운트끼리 숫자 충돌이 발생함. 대신 항목 나열 / 역할 표현 ("다중 검증" / "bash 명령 + Agent 호출" 등). 외부 표준·스펙이 정한 고정 항목 수는 예외. 결정 기록(`docs/harness-decisions.md` / `docs/architecture-decisions.md` 와 그 archive)의 본문은 본 규칙의 적용 대상이 아니다 — 하네스 본문이 아니라 프로젝트 문서다.
+- **하네스 카운트 표현** — "N종" / "N가지" 같이 하네스 안의 검증 단계 / 서브에이전트 / 도구 등을 정량 카운트하는 표현. 하네스 변경마다 본문 동기화 부담이 누적되고, 의미가 다른 카운트끼리 숫자 충돌이 발생함. 대신 항목 나열 / 역할 표현 ("다중 검증" / "bash 명령 + Agent 호출" 등). 외부 표준·스펙이 정한 고정 항목 수는 예외. 결정 기록(`docs/harness-decisions/` · `docs/architecture-decisions/` 와 그 `archive/`)의 본문은 본 규칙의 적용 대상이 아니다 — 하네스 본문이 아니라 프로젝트 문서다.
 
 - **프로젝트 고유 이슈·Decision 번호의 권위 인용** — 다른 프로젝트에서 존재하지 않는 참조가 된다. 형식 예시와 상위 저장소(도구 자체) 이슈 인용은 예외.
 - **required-docs 계약 밖의 docs/ 의존성** — 새 문서 의존을 추가하려면 `references/required-docs.md` 에 contract 를 함께 추가한다.

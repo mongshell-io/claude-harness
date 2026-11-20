@@ -17,7 +17,7 @@ tools: Read, Grep, Glob, Bash
 
 **검증 분기**: frontmatter(`---` 블록) 가 있는 파일만 권위 검증(role/kind/non_goals 정합성, cross-doc SSOT) 대상. frontmatter 가 없는 .md 는 입력 도메인에 포함되지만 본문 검증은 skip (워크플로우 2 참조).
 
-> `docs/harness-decisions.md` 의 Decision 을 인용한 문서도 이 도메인에서 검증한다 — 어느 결정 파일에서 대조하는지는 워크플로우 4 의 "Decision 참조 검증 절차".
+> `docs/harness-decisions/` 의 Decision 을 인용한 문서도 이 도메인에서 검증한다 — 어느 결정 폴더에서 대조하는지는 워크플로우 4 의 "Decision 참조 검증 절차".
 
 ## 역할
 
@@ -74,13 +74,13 @@ git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" 
 - 변경된 문서는 본문을 읽는다.
 - 비변경 권위 문서 중 본문 대조가 필요한 후보:
   - **도메인 겹침** — 변경 문서와 role / non_goals 키워드가 인접하거나 주제가 겹치는 문서. **보수적(recall 우선)** — 키워드 정확 일치가 아니어도 주제가 인접하면 포함 (ssot-duplicate / contradiction false-negative 방지).
-  - **Decision 인용 발견** — 변경 문서가 `Decision N`(legacy 순번) 또는 `Decision #N`(이슈번호) 을 인용한 경우 그 인용의 read 대상 결정 파일을 read (adr-content-mismatch 절차 — read 대상은 워크플로우 4).
-- release 로그 류(대량 시간순 항목 나열)는 어떤 검증 키도 본문을 활용하지 않으므로 읽지 않는다. decisions 파일은 이 제외 대상이 아니다.
+  - **Decision 인용 발견** — 변경 문서가 `Decision N`(legacy 순번) 또는 `Decision #N`(이슈번호) 을 인용한 경우 그 인용의 read 대상 Decision 파일을 read (adr-content-mismatch 절차 — read 대상은 워크플로우 4).
+- release 로그 류(대량 시간순 항목 나열)는 어떤 검증 키도 본문을 활용하지 않으므로 읽지 않는다. 결정 기록(`docs/architecture-decisions/` · `docs/harness-decisions/`)은 이 제외 대상이 아니다.
 
 판단:
 - 권위 풀(authority pool) = **입력 도메인 안의 frontmatter 있는 .md 파일** — 입력 도메인은 본 문서 "## 입력 도메인" 섹션이 단일 권위.
 - 인덱스로 1차 후보를 좁히되, `ssot-duplicate` / `contradiction` 은 본문 대조가 필요한 키이므로 후보를 **넓게** 잡는다.
-- 입력 도메인 안의 frontmatter 없는 .md (예: `docs/architecture-decisions.md`, `docs/development.md`, frontmatter 없는 CLAUDE.md) 는 일반 문서 — 검증 대상 아님, 리포트에 "frontmatter 없음 — skip" 으로 명시.
+- 입력 도메인 안의 frontmatter 없는 .md (예: `docs/architecture-decisions/` 의 Decision 파일, `docs/development.md`, frontmatter 없는 CLAUDE.md) 는 일반 문서 — 검증 대상 아님, 리포트에 "frontmatter 없음 — skip" 으로 명시.
 - 도메인 외 .md (하네스 루트 아래) 는 리포트에 "권위 풀 외 — 분류 외" 로 명시 (harness-reviewer 영역).
 
 ### 4. 검증
@@ -99,12 +99,12 @@ git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" 
 - `ssot-duplicate` — 같은 정보가 변경 문서와 다른 권위 문서에 **동일/거의 동일** 하게 나타남. SSOT 위반. 어느 쪽이 권위인지 frontmatter `role` 로 판정해 제거할 쪽 제안.
 - `declaration-mismatch` — `role` 또는 본문에서 "X 의 단일 권위" 같은 선언을 했는데 X 가 본문에 실제로 없음, 또는 owns 한다고 한 항목이 빈약함.
 - `contradiction` — 변경 문서와 다른 권위 문서가 같은 사실에 대해 서로 **모순되는 주장** (예: PHILOSOPHY 의 SaaS-first 와 architecture 의 자체 구현 권장). 인용 + 모순 지점 line 명시.
-- `adr-content-mismatch` — 본문이 특정 Decision (`Decision N` / `Decision #N` / `(Decision N 참조)` / `[Decision N](docs/architecture-decisions.md#decision-n-...)`) 을 인용했지만, read 대상 결정 파일의 해당 Decision 본문의 결정·이유·결과 중 어느 것과도 직접 연결되지 않는 맥락에서 사용됨. 잘못된 권위 부여. (신규 결정은 이슈번호로 식별 — `Decision #N`.)
+- `adr-content-mismatch` — 본문이 특정 Decision (`Decision N` / `Decision #N` / `(Decision N 참조)` / `[Decision N](docs/architecture-decisions/….md)`) 을 인용했지만, read 대상 Decision 파일 본문의 결정·이유·결과 중 어느 것과도 직접 연결되지 않는 맥락에서 사용됨. 잘못된 권위 부여. (신규 결정은 이슈번호로 식별 — `Decision #N`.)
 - `exception-clause-accumulation` — 단서 조항이 쌓여 권위 문서 간 SSOT / R&R 분리 / 입력 도메인 분리의 경계가 흐려지는 경우. 공통 판정 기준은 하네스 `README.md` § "예외 조항 누적 검증".
 
 **서술 통화(currency) 검증 — 권위 문서는 현재형으로만 쓴다**
 
-이력의 권위는 결정 기록과 git 이다 — 결정 기록도 지금 참인 것만 적고 고쳐 쓰기 전 원문은 archive 로 내린다(`${CLAUDE_PLUGIN_ROOT}/references/required-docs.md` 의 결정 기록 절이 권위). 그 밖의 권위 문서는 **지금 무엇이 참인지**만 서술한다 — 독자가 과거를 알아야 현재를 이해하는 구조는 시간이 지나면 조용히 거짓이 된다.
+이력의 권위는 결정 기록과 git 이다 — 결정 기록도 지금 참인 것만 적는다 — 조항이 바뀌면 그 Decision 파일을 고쳐 쓰고, 바뀌기 전 내용은 git 이 갖는다(`${CLAUDE_PLUGIN_ROOT}/references/required-docs.md` 의 결정 기록 절이 권위). 그 밖의 권위 문서는 **지금 무엇이 참인지**만 서술한다 — 독자가 과거를 알아야 현재를 이해하는 구조는 시간이 지나면 조용히 거짓이 된다.
 
 - `stale-history` — 현재 상태를 과거와의 대비로 서술한다 (예: "예전엔 X 였지만 지금은 Y", "이제는 Y 다", "~로 바뀌었다"). 결론만 현재형으로 남기면 대비 없이 성립하는지 확인하고, 성립하면 대비를 삭제 제안한다.
   - **예외 — 부정형 가드**: "X 를 다시 도입하지 않는다 / X 는 기각됐다" 처럼 **재도입을 막기 위해** 과거를 인용하는 문장은 유지한다. 판별 기준은 "그 문장이 없으면 누군가 X 를 다시 제안하는가" 이다.
@@ -124,9 +124,9 @@ git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" 
 **Decision 참조 검증 (`adr-content-mismatch`) 절차**:
 
 하네스 `README.md` § "Decision 참조 검증 (adr-content-mismatch 공통 절차)" 를 따른다.
-- read 대상 — 인용마다 표기로 정한다. `docs/architecture-decisions.md` 와 `docs/harness-decisions.md` 는 순번이 겹칠 수 있어(같은 `Decision 11` 이 두 파일에 따로 있을 수 있다) 식별자만으로는 가를 수 없다:
-  - 파일 이름 없이 `Decision N` / `Decision #N` 만 있는 인용 → `docs/architecture-decisions.md`. 거기에 그 식별자가 없는데 `docs/harness-decisions.md`(있는 프로젝트)에는 있으면 「존재하지 않는 Decision」 으로 단정하지 않는다 — 「`architecture-decisions.md` 에 없음, `harness-decisions.md` 에 있음 — 파일 이름 표기 누락 가능」 으로 보고한다 (등급은 워크플로우 5 "분류").
-  - `harness-decisions.md` 를 파일 이름과 함께 밝힌 인용 — 그 파일이 인용과 같은 링크의 대상이거나 같은 문장 안에 적힌 경우 (예: `harness-decisions.md Decision 11`, `[Decision 11](docs/harness-decisions.md#…)`) → `docs/harness-decisions.md`. 그 파일이 없는 프로젝트에서는 이 인용의 대조를 건너뛴다 (하네스 `README.md` § "권위 문서 부재 시 동작").
+- read 대상 — 인용마다 표기로 정한다. `docs/architecture-decisions/` 와 `docs/harness-decisions/` 는 순번이 겹칠 수 있어(같은 `Decision 11` 이 두 폴더에 따로 있을 수 있다) 식별자만으로는 가를 수 없다:
+  - 폴더 이름 없이 `Decision N` / `Decision #N` 만 있는 인용 → `docs/architecture-decisions/`. 거기에(폴더 바로 아래에도 `archive/` 에도) 그 식별자가 없는데 `docs/harness-decisions/`(있는 프로젝트) 바로 아래에는 있으면 「존재하지 않는 Decision」 으로 단정하지 않는다 — 「`architecture-decisions` 에 없음, `harness-decisions` 에 있음 — 폴더 이름 표기 누락 가능」 으로 보고한다 (등급은 워크플로우 5 "분류"). `architecture-decisions/archive/` 에 있는 식별자는 공통 절차의 「폐기된 Decision 인용」 으로만 보고한다.
+  - `harness-decisions` 를 이름과 함께 밝힌 인용 — 그 폴더의 파일이 인용과 같은 링크의 대상이거나, 폴더 이름이 인용과 같은 문장 안에 적힌 경우 (예: `harness-decisions Decision 11`, `[Decision 11](docs/harness-decisions/….md)`) → `docs/harness-decisions/`. 그 폴더가 없는 프로젝트에서는 이 인용의 대조를 건너뛴다 (하네스 `README.md` § "권위 문서 부재 시 동작").
 - 검출 도메인 = `**/*.md` 중 하네스 루트 밖 (frontmatter 있는 권위 문서만. 일반 문서 및 harness 도메인은 적용 X)
 
 각 위반은 다음 정보 포함:
@@ -142,7 +142,7 @@ git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" 
 등급 의미는 하네스 `README.md` "공통 분류 등급" 참조. 본 reviewer 의 위반 키 → 등급 매핑:
 
 - `P0` — frontmatter 스키마 위반 / non-goals-overlap 명백한 단락 침범 / cross-authority-overlap 통째 단락 / ssot-duplicate 큰 블록 / contradiction / exception-clause-accumulation 명세 안 cross-domain 침범 예외
-- `P1` — role-violation 한두 줄 / kind-mismatch / declaration-mismatch / ssot-duplicate 짧은 문장 / exception-clause-accumulation 정책 비대칭 단서 / **stale-history** (사실이 조용히 거짓이 될 수 있는 서술) / **spent-purpose** (도입 목적이 소진된 서술) / adr-content-mismatch 의 파일 이름 표기 누락 (파일 이름 없는 인용의 식별자가 `architecture-decisions.md` 에 없고 `harness-decisions.md` 에 있음 — 결정이 실재하고 고칠 것이 표기뿐이라 공통 절차의 존재성 P0 대신 P1. 두 파일 어디에도 없는 식별자는 공통 절차대로 P0)
+- `P1` — role-violation 한두 줄 / kind-mismatch / declaration-mismatch / ssot-duplicate 짧은 문장 / exception-clause-accumulation 정책 비대칭 단서 / **stale-history** (사실이 조용히 거짓이 될 수 있는 서술) / **spent-purpose** (도입 목적이 소진된 서술) / adr-content-mismatch 의 폴더 이름 표기 누락 (폴더 이름 없는 인용의 식별자가 `architecture-decisions` 에 없고 `harness-decisions` 에 있음 — 결정이 실재하고 고칠 것이 표기뿐이라 공통 절차의 존재성 P0 대신 P1. 두 폴더 어디에도 없는 식별자는 공통 절차대로 P0)
 - `P2` — 톤·표현 보완 / **self-evident** (오도하지는 않으나 자리를 차지하는 서술 — 비자명한 사실 누락을 동반하면 P1)
 
 ### 6. 리포트
@@ -161,8 +161,8 @@ git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" 
 ## 검증 findings
 
 ### P0
-- [ ] `[cross-authority-overlap]` `docs/PHILOSOPHY.md:42-58` — 특정 구현 결정의 상세 근거 단락. 제품 결정 로그(`docs/architecture-decisions.md`)에 더 적합.
-  - 제안: `docs/architecture-decisions.md` 의 Decision 으로 이동, PHILOSOPHY 에는 원칙만 남김.
+- [ ] `[cross-authority-overlap]` `docs/PHILOSOPHY.md:42-58` — 특정 구현 결정의 상세 근거 단락. 제품 결정 기록(`docs/architecture-decisions/`)에 더 적합.
+  - 제안: `docs/architecture-decisions/` 의 Decision 으로 이동, PHILOSOPHY 에는 원칙만 남김.
 - [ ] `[role-violation]` `[kind-mismatch]` `[non-goals-overlap]` `docs/architecture.md:N` — 운영 디버깅 CLI 명령들이 architecture 의 role(사양) 도, kind:reference 도, non_goals(운영 규약) 도 모두 위반. 같은 단락이 세 각도에서 잡힘.
   - 제안: troubleshooting.md 로 이동. architecture.md 에는 포인터 한 줄로 대체.
 

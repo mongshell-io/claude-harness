@@ -101,7 +101,6 @@ git diff $RANGE --name-only | grep -E '<ui-path-pattern>' > "$QA_TMP/ui-changed.
 | typecheck / test / lint | 코드 파일 변경 있음 | 코드 파일 변경 있음 | — |
 | build | **제외** | 코드 파일 변경 있음 | `--build` 지정 시 |
 | **schema 정합성** | **DB schema 경로 변경 있음** | **DB schema 경로 변경 있음** | — | <!-- ERD 산출물 검사: <db-erd-cmd> 실패 시 P0. 규약 권위: DB 영역 CLAUDE.md -->
-| **decisions 인덱스 정합** | **decisions 파일(`architecture-decisions.md` / `harness-decisions.md` / `decisions-archive.md` / `harness-decisions-archive.md`) 변경 있음** | **동일** | — |
 | **harness-core 마커 정합** | **루트 `CLAUDE.md` 에 마커 존재 시 항상** (변경 여부 무관) | **동일** | — | <!-- 정본이 바뀌면 내 diff 와 무관하게 낡는다 -->
 | code-reviewer | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | — |
 | security-reviewer | **제외** | 코드 파일 변경 있음 | `--security` 지정 시 |
@@ -138,7 +137,7 @@ QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 
 메인 세션이 절차를 오케스트레이션한다 (진입점 디스패처). 코드/문서 편집은 본 스킬 범위 외 — 자세한 제약은 `## 제약` 섹션 참조.
 
-**Step 3a: bash 명령 동시 (typecheck + test + lint + 조건부 schema 정합성 + 조건부 decisions 인덱스 정합 + 조건부 harness-core 마커 정합 + 조건부 build + 외부 LLM(지정 시))**
+**Step 3a: bash 명령 동시 (typecheck + test + lint + 조건부 schema 정합성 + 조건부 harness-core 마커 정합 + 조건부 build + 외부 LLM(지정 시))**
 
 Step 0 의 표에서 결정한 `RANGE` 값과 Step 1 의 확정 검증 목록을 사용한다. 실행 예정인 것만 백그라운드로 실행한다. Split 결과 파일(`$QA_TMP/md-changed.txt` 등)은 Step 1 에서 이미 생성되어 있다.
 
@@ -155,11 +154,6 @@ QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 # ( <db-generate-cmd> && git status --porcelain <migration-dir>/ ; \
 #   <db-erd-cmd> && git status --porcelain <erd-output-paths> ) > "$QA_TMP/schema.txt" 2>&1 &
 # (구체 명령·경로 권위: DB 영역 CLAUDE.md — db-generate-cmd / migration-dir / db-erd-cmd / ERD 산출물)
-# decisions 인덱스 정합: decisions 파일(architecture-decisions / harness-decisions / decisions-archive / harness-decisions-archive) 변경 시에만 실행
-# 결정적(deterministic) 판정은 모델 추론이 아니라 스크립트로 처리한다 (스크립트 우선 원칙).
-# 헤더 식별자 집합 vs 상태 인덱스/목차 집합을 대조해 MISSING(헤더에만)/DANGLING(인덱스에만)/중복/NO_SECTION 을 검출한다 —
-# 개수만 비교하던 이전 방식이 놓치던 "한쪽 누락 + 반대쪽 오타" 상쇄 케이스까지 잡는다. 불일치 시 exit 1.
-# node "${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs" > "$QA_TMP/decisions-index.txt" 2>&1 &
 # harness-core 마커 정합: 루트 CLAUDE.md 에 마커가 있을 때만 실행
 # 정본과 복사본의 마커 문자열을 대조한다. 자동 반영은 하지 않는다 — 블록의 자리표시(<…>)와
 # 정책 노브의 「사람이 머지」·「High 경로」 나열은 프로젝트 값이라 블록 통째 치환이 성립하지 않고,
@@ -256,7 +250,6 @@ Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경�
 | lint | 실패 시 항상 | — | — |
 | build | 실패 시 항상 | — | — |
 | schema 정합성 | `<migration-dir>/` 또는 ERD 산출물 dirty 시 항상 | — | — |
-| decisions 인덱스 정합 | `check-decisions-index.mjs` exit 1 (MISSING/DANGLING/중복/NO_SECTION) 시 항상 | — | — |
 | harness-core 마커 정합 | — | `$QA_TMP/harness-core.txt` 가 비어있지 않음 (정본 블록 재복사 필요 — 자리표시 · 사람이 머지 · High 경로 나열은 프로젝트 값 유지) | — |
 | code-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
 | security-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
@@ -265,7 +258,7 @@ Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경�
 | doc-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
 | harness-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
 
-toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는 stop 하지 않는다 — P0 분류 후 리포트에 포함한다.
+toolchain 검증(typecheck/test/lint/build/schema) 실패는 stop 하지 않는다 — P0 분류 후 리포트에 포함한다.
 
 `code-reviewer` 의 `### Pre-existing` 절은 등급 합산에 넣지 않고 리포트의 `### Pre-existing` 절로 그대로 옮긴다 (README "공통 분류 등급" — 귀속 표시, 머지 게이트 비포함).
 
@@ -312,7 +305,6 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - lint: ✅ Passed / ❌ Failed
 - 빌드: ✅ Passed / ❌ Failed (`--branch` 또는 `--build` 시) / ⏭️ 단발 기본 — 스킵
 - schema 정합성 (마이그레이션 + ERD 산출물): ✅ Passed / ❌ Failed / ⏭️ DB schema 경로 변경 없음 — 스킵
-- decisions 인덱스 정합: ✅ Passed / ❌ Failed (exit 1 — MISSING/DANGLING/중복/NO_SECTION) / ⏭️ decisions 파일 변경 없음 — 스킵
 - harness-core 마커: ✅ 정본과 같음 / ⚠️ 낡음 (`루트 CLAUDE.md = … / 정본 = …`) / ⏭️ 마커 없음 — 스킵
 - browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ browser-scenarios.md 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
 - `code-reviewer`: ✅ 완료 / ⏭️ `--skip-code-review` 사용자 명시 스킵
