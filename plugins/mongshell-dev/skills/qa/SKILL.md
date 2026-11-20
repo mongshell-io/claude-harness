@@ -102,7 +102,6 @@ git diff $RANGE --name-only | grep -E '<ui-path-pattern>' > "$QA_TMP/ui-changed.
 | build | **제외** | 코드 파일 변경 있음 | `--build` 지정 시 |
 | **schema 정합성** | **DB schema 경로 변경 있음** | **DB schema 경로 변경 있음** | — | <!-- ERD 산출물 검사: <db-erd-cmd> 실패 시 P0. 규약 권위: DB 영역 CLAUDE.md -->
 | **decisions 인덱스 정합** | **decisions 파일(`architecture-decisions.md` / `harness-decisions.md` / `decisions-archive.md` / `harness-decisions-archive.md`) 변경 있음** | **동일** | — |
-| **decisions 도입 버전 확정** | **결정 문서 존재 시 항상** (변경 여부 무관) | **동일** | — | <!-- Step 2 에서 자동 write. 조건이 "변경 있음" 이 아닌 이유는 아래 항목 참조 -->
 | **harness-core 마커 정합** | **루트 `CLAUDE.md` 에 마커 존재 시 항상** (변경 여부 무관) | **동일** | — | <!-- 정본이 바뀌면 내 diff 와 무관하게 낡는다 -->
 | code-reviewer | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | 코드 파일 변경 있음 + `--skip-code-review` 미지정 | — |
 | security-reviewer | **제외** | 코드 파일 변경 있음 | `--security` 지정 시 |
@@ -112,7 +111,6 @@ git diff $RANGE --name-only | grep -E '<ui-path-pattern>' > "$QA_TMP/ui-changed.
 | harness-reviewer | `$QA_TMP/harness-domain.txt` 비어있지 않음 | 동일 | — |
 
 - **DB schema 경로 변경 여부**: 변경 파일 목록에 DB schema 경로(권위: DB 영역 CLAUDE.md — 구체 경로 패턴은 해당 문서 참조)가 포함되면 schema 정합성 검사를 실행 목록에 추가한다. schema 정합성은 (a) 마이그레이션 dirty + (b) ERD 산출물 staleness 두 검사를 함께 수행한다 (구체 명령·경로 권위: 동일 CLAUDE.md).
-- **decisions 도입 버전 확정의 조건**: `docs/architecture-decisions.md` 또는 `docs/harness-decisions.md` 존재 여부만 본다 — 이번 diff 가 그 파일을 건드렸는지는 무관하다 (이유는 Step 2). 결정 문서가 하나도 없는 프로젝트에서 스킵해야 하는 이유는 스크립트가 문서 부재를 루트 해석 실패로 판정하기 때문이다.
 - **harness-core 마커 정합의 조건**: 루트 `CLAUDE.md` 에 `harness-core` 마커가 있으면 실행한다 — 이번 diff 와 무관하다. 낡음은 내 변경이 아니라 정본(`${CLAUDE_PLUGIN_ROOT}/references/claude-md-core.md`) 갱신으로 발생하기 때문이다. 마커가 없는 프로젝트(코어 블록 미삽입)는 스킵된다.
 
 ### Step 2: 조건부 사전 확인
@@ -134,20 +132,6 @@ QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 완료 후 "node_modules 미설치 감지 → 의존성 설치 자동 실행 (Xs)" 한 줄 안내.
 - 설치 실패 시 (exit code ≠ 0) "환경 셋업 실패 — 직접 의존성 설치 후 재호출 바랍니다. 결과 디렉토리(`$QA_TMP`)의 `install.txt` 확인." 안내 후 스킬 종료 (stop).
 
-**decisions 도입 버전 확정 (Step 1 조건표에서 실행 예정인 경우에만 — 의도된 자동화 예외):**
-
-Decision 의 `**도입**: <버전> (#N)` 은 **생성물**이다. 값이 확정되는 순간은 태깅 시점인데 `/release` 는 파일을 편집하지 않으므로(버전 SSOT = git tag max), 확정된 값은 릴리스 **다음에 오는 아무 PR** 이 이 자리에서 함께 실어 나른다. 전용 chore PR 을 만들지 않는다.
-
-```bash
-QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
-node "${CLAUDE_PLUGIN_ROOT}/scripts/check-decision-versions.mjs" --write > "$QA_TMP/decision-versions.txt" 2>&1
-```
-
-- 스크립트는 `(#N)` → first-parent 커밋 → `git tag --contains` 최초 태그로 결정론적으로 값을 파생해 in-place 로 채운다. 릴리스 안 된 건(PENDING)은 값이 아직 없으므로 건드리지 않고, 자동 판정 불가(UNRESOLVED)는 쓰지 않고 목록만 남긴다.
-- **exit 1 = 채운 게 있음** (실패 아님). 리포트 요약에 `🔧 Decision 도입 버전: N건 자동 확정 — 이번 커밋에 포함하세요` 와 `파일:line → 버전` 목록을 출력한다. **P0 로 분류하지 않는다** — 채우는 것 자체가 곧 fix 라 사람이 판단할 여지가 없다. 커밋 강제는 `/pr` Step 0 의 dirty 게이트가 담당하고, 놓쳐도 다음 `/qa` 가 다시 채운다.
-- exit 0 이면 P0/P1 항목을 만들지 않는다 — Step 5 요약 표의 상태 줄만 남는다.
-- UNRESOLVED 목록이 있으면 P1 로 리포트한다 (수동 확인 필요 — 도입 라인에 `(#N)` 이 없거나 gh 역조회 실패).
-
 ### Step 3: 병렬 실행 (bash 명령 + Agent 호출)
 
 > **라우팅 권위**: 변경 파일 → reviewer 분기는 `${CLAUDE_PLUGIN_ROOT}/README.md` 의 "Reviewer 라우팅" 표를 따른다. 이 SKILL 은 caller — 라우팅 표를 자체 정의하지 않는다.
@@ -165,7 +149,7 @@ QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
 <typecheck-cmd> > "$QA_TMP/typecheck.txt" 2>&1 &
 <test-cmd> > "$QA_TMP/test.txt" 2>&1 &
 <lint-cmd> > "$QA_TMP/lint.txt" 2>&1 &
-# schema 정합성: DB schema 경로 변경 시에만 실행 — 2종 검사를 한 파일에 모은다.
+# schema 정합성: DB schema 경로 변경 시에만 실행 — 마이그레이션 · ERD 검사를 한 파일에 모은다.
 #   (a) 마이그레이션 dirty: <db-generate-cmd> 후 <migration-dir>/ dirty
 #   (b) ERD staleness: <db-erd-cmd> 후 <erd-output-paths> dirty (둘 다 dirty 비어있어야 Passed)
 # ( <db-generate-cmd> && git status --porcelain <migration-dir>/ ; \
@@ -241,7 +225,7 @@ Agent 도구로 `subagent_type=harness-reviewer` 를 호출한다. 프롬프트�
 
 **Step 3c: browser 검증 (`--branch` + UI 변경 조건일 때만)**
 
-Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경우에만 실행한다.
+Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경우에만 실행한다. `.claude/browser-scenarios.md` 가 없으면 앱을 띄우지 않고 건너뛴다 — 리포트에 「권위 문서 부재 — skip: `.claude/browser-scenarios.md`」 를 적는다.
 
 메인 세션이 `preview_*` 도구를 순차 호출한다. 구체 진입 절차·라우트·점검 항목은 `.claude/browser-scenarios.md` 참조로 위임 (본문에 프로젝트 종속값 미기재).
 
@@ -273,7 +257,6 @@ Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경�
 | build | 실패 시 항상 | — | — |
 | schema 정합성 | `<migration-dir>/` 또는 ERD 산출물 dirty 시 항상 | — | — |
 | decisions 인덱스 정합 | `check-decisions-index.mjs` exit 1 (MISSING/DANGLING/중복/NO_SECTION) 시 항상 | — | — |
-| decisions 도입 버전 확정 | **없음** (exit 1 = 자동 확정 완료 — 실패 아님) | UNRESOLVED 목록 있음 | — |
 | harness-core 마커 정합 | — | `$QA_TMP/harness-core.txt` 가 비어있지 않음 (정본 블록 재복사 필요 — 자리표시 · 사람이 머지 · High 경로 나열은 프로젝트 값 유지) | — |
 | code-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
 | security-reviewer | P0 그대로 | P1 그대로 | P2 그대로 |
@@ -306,7 +289,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - [ ] [code-reviewer] `src/foo/baz.ts:34` — 표준 에러 클래스 미사용
 - [ ] [doc-reviewer] `docs/PHILOSOPHY.md:42` — [cross-authority-overlap] `docs/architecture.md` 의 role 에 더 적합한 단락
 - [ ] [harness-reviewer] `plugins/<플러그인>/skills/qa/SKILL.md:78` — [skill-rnr-overlap] /pr 와 /release 가 같은 작업 양쪽에서 정의
-- [ ] [security-reviewer] `src/app/api/order/route.ts:45` — [A03: 인젝션] 사용자 입력이 SQL 쿼리에 직접 삽입됨 (parameterized query 필요)
+- [ ] [security-reviewer] `<API 라우트 파일>:45` — [A03: 인젝션] 사용자 입력이 SQL 쿼리에 직접 삽입됨 (parameterized query 필요)
 <!-- finding 그룹화 정책: 같은 파일:line + 같은 위반 유형이면 출처 병기. 예:
 - [ ] [security-reviewer][gemini] `src/foo/bar.ts:23` — [A01: 접근 제어 누락] 인증 게이트 없는 관리자 엔드포인트 (외부 LLM 의견 포함)
 -->
@@ -330,11 +313,10 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - 빌드: ✅ Passed / ❌ Failed (`--branch` 또는 `--build` 시) / ⏭️ 단발 기본 — 스킵
 - schema 정합성 (마이그레이션 + ERD 산출물): ✅ Passed / ❌ Failed / ⏭️ DB schema 경로 변경 없음 — 스킵
 - decisions 인덱스 정합: ✅ Passed / ❌ Failed (exit 1 — MISSING/DANGLING/중복/NO_SECTION) / ⏭️ decisions 파일 변경 없음 — 스킵
-- Decision 도입 버전: ✅ 확정할 것 없음 / 🔧 N건 자동 확정 — 이번 커밋에 포함하세요 (`파일:line → vX.Y.Z` 목록) / ⏭️ 결정 문서 없음 — 스킵
 - harness-core 마커: ✅ 정본과 같음 / ⚠️ 낡음 (`루트 CLAUDE.md = … / 정본 = …`) / ⏭️ 마커 없음 — 스킵
-- browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
+- browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ browser-scenarios.md 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
 - `code-reviewer`: ✅ 완료 / ⏭️ `--skip-code-review` 사용자 명시 스킵
-- REVIEW.md 트리거: 공통: C1 / 없음 · 프로젝트: R2 · R5 / 없음 / 해당 없음 (파일 없음) / 해당 없음 (origin/main ref 없음) (두 칸 따로, 예: `공통: C1 · 프로젝트: 해당 없음 (파일 없음)`) / ⏭️ code-reviewer 미호출 — 스킵 (code-reviewer 결과 그대로, fetch 실패 문구가 있으면 덧붙임 — `references/review-checklist.md`)
+- REVIEW.md 트리거: R2 · R5 / 없음 / 해당 없음 (파일 없음) / 해당 없음 (origin/main ref 없음) / ⏭️ code-reviewer 미호출 — 스킵 (code-reviewer 결과 그대로, fetch 실패 문구가 있으면 덧붙임 — `references/review-checklist.md`)
 - `security-reviewer`: ✅ 완료 / ⏭️ 단발 기본 — 스킵 / ⏭️ 코드 변경 없음 — 스킵
 - 외부 LLM: 지정했을 때만 도구별 한 줄 (표기는 `references/external-llm-review.md` "결과 분류")
 - `doc-reviewer`: ✅ 완료 / ⏭️ doc 도메인 변경 없음 — 스킵
@@ -379,20 +361,19 @@ printf '위험 경로 패턴: %s\n' "$RISKY_PATTERN"
 한 줄 안내(사용자 출력): "QA 통과 marker 기록 — /pr Step 0 게이트 + Step 2 'QA 발견 요약' 에서 사용됨. 위험 경로 패턴: <블록이 찍은 RISKY_PATTERN>" — 스크립트가 stderr 로 낸 `경고:` 줄(정책 노브 ↔ deny_paths 드리프트 · 작업 트리의 정책 노브 변경 · deny_paths 형식)이 있으면 그대로 덧붙인다.
 
 - 기본(uncommitted) 호출은 부분 검증이라 PR 범위를 보증하지 못하므로 marker 를 기록하지 않는다.
+- `/plan` 라운드 루프(좁은 RANGE) 도 marker 를 기록하지 않는다. 사이클 종료 후 `/qa --branch` 가 marker 기록의 정당한 지점이다.
+- P0 가 1건 이상이면 marker 를 기록하지 않는다 (찍히지 않은 HEAD = 미통과 신호).
 
 **직전 QA SHA 기록 (모든 /qa 호출 — 통과 여부 무관):**
 
 리포트 출력 완료 시점에 다음을 실행한다 (재검증 모드의 트리거 판정에 사용):
 
 ```bash
-QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
-git rev-parse HEAD > "$QA_TMP/last-qa-sha"
+# $QA_TMP 안이 아니다 — 그 폴더는 다음 호출의 Step 1 이 지운다.
+git rev-parse HEAD > "/tmp/qa-$(basename "$(git rev-parse --show-toplevel)").last-sha"
 ```
 
-- `$QA_TMP` 디렉토리는 Step 1 에서 이미 초기화되어 있으므로 별도 mkdir 불필요.
-- 기록 실패 시 (디렉토리 부재 등) 무시하고 진행 (best-effort — 부재 시 재검증 모드 대신 일반 /qa 폴백으로 안전하게 처리됨).
-- `/plan` 라운드 루프(좁은 RANGE) 도 marker 를 기록하지 않는다. 사이클 종료 후 `/qa --branch` 가 marker 기록의 정당한 지점이다.
-- P0 가 1건 이상이면 marker 를 기록하지 않는다 (찍히지 않은 HEAD = 미통과 신호).
+- 기록 실패 시 무시하고 진행 (best-effort — 파일이 없으면 재검증 모드 대신 일반 /qa 로 폴백된다).
 
 ### Step 6: 후속 (사용자 선택)
 
@@ -416,11 +397,25 @@ P2 의 기본 처리는 조건부 유예 원칙에 따른다:
 
 ### 트리거 판정
 
-다음 두 조건이 모두 충족될 때 "재검증 모드" 로 진입한다:
-1. 직전 /qa 라운드가 이번 세션에서 실행됐다 (결과가 메모리에 있음).
-2. 수정 커밋이 직전 /qa 라운드 이후에만 추가됐다 (신규 기능 추가 없음).
+다음이 모두 충족될 때 "재검증 모드" 로 진입한다:
+1. 직전 /qa 라운드가 이번 세션에서 실행됐다 (결과가 메모리에 있음). 세션 재시작 등으로 직전 라운드 findings 를 신뢰 가능하게 확보할 수 없으면 항상 일반 /qa 다.
+2. 직전 라운드 이후의 변경이 그 findings 의 수정뿐이다 (신규 기능 추가 없음).
+3. 아래 명령이 폴백 문구를 내지 않는다.
 
-세션 재시작 등으로 직전 라운드 findings/SHA 를 신뢰 가능하게 확보할 수 없으면 (조건 1 미충족) 항상 일반 /qa 로 폴백한다. `$QA_TMP/last-qa-sha` 부재 시도 동일하게 일반 /qa 로 폴백한다 (Step 5 SHA 기록 연동 — 아래 참조).
+```bash
+# 직전 /qa 라운드 이후 바뀐 파일(커밋한 것 + 아직 커밋하지 않은 것)을 뽑는다.
+# 직전 SHA 파일이 없거나 · 그 SHA 가 지금 브랜치의 조상이 아니거나(rebase · 브랜치 전환) · 바뀐 파일이 없으면
+# 빈 목록으로 조용히 통과하지 않고 폴백 문구를 낸다.
+QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
+LAST_QA_SHA=$(cat "$QA_TMP.last-sha" 2>/dev/null)
+if [ -n "$LAST_QA_SHA" ] && git merge-base --is-ancestor "$LAST_QA_SHA" HEAD 2>/dev/null; then
+  rm -rf "$QA_TMP" && mkdir -p "$QA_TMP"   # 직전 라운드 산출물을 지운다 — 재검증에서는 Step 1 의 init 을 다시 돌리지 않는다
+  git diff "$LAST_QA_SHA" --name-only --diff-filter=d > "$QA_TMP/reverify-changed.txt"
+  [ -s "$QA_TMP/reverify-changed.txt" ] || echo "직전 라운드 이후 바뀐 파일 없음 — 일반 /qa 로 폴백"
+else
+  echo "직전 QA SHA 없음 또는 조상 아님 — 일반 /qa 로 폴백"
+fi
+```
 
 조건을 충족하지 않으면 일반 /qa 절차(Step 0~6)를 그대로 실행한다.
 
@@ -437,18 +432,11 @@ P2 의 기본 처리는 조건부 유예 원칙에 따른다:
 
 **1. 수정 diff 도메인 산출**
 
-```bash
-# 수정 커밋의 변경 파일만 추출 (직전 /qa 라운드 이후 커밋들)
-QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
-# last-qa-sha: Step 5 에서 기록한 직전 /qa HEAD SHA
-# 파일 부재 = 직전 라운드 식별 불가 → 이 경로에 도달하기 전 트리거 판정에서 일반 /qa 로 폴백되어야 함
-LAST_QA_SHA=$(cat "$QA_TMP/last-qa-sha" 2>/dev/null)
-git diff "${LAST_QA_SHA}..HEAD" --name-only --diff-filter=d > "$QA_TMP/reverify-changed.txt" 2>/dev/null || true
-```
+「트리거 판정」 의 명령이 만든 `$QA_TMP/reverify-changed.txt` 가 입력이다.
 
 **2. 도메인 매칭**
 
-수정 diff 파일 목록을 Step 1 과 동일한 split(하네스 루트 유도 포함)으로 재분류해 하네스 README "Reviewer 라우팅" 표로 매칭한다 — 닿은 도메인의 reviewer 만 재실행하고, 닿지 않은 도메인의 직전 라운드 결과는 그대로 승계한다. `security-reviewer` 는 실질 delta(새 로직·새 파일·의미 변경) + (`--branch`/`--security`) 조건 충족 시에만 재실행.
+수정 diff 파일 목록(`reverify-changed.txt` — `git diff $RANGE` 가 아니다)을 Step 1 과 동일한 split(하네스 루트 유도 포함. 그 블록의 init `rm -rf` 는 다시 돌리지 않는다)으로 재분류해 하네스 README "Reviewer 라우팅" 표로 매칭한다 — 닿은 도메인의 reviewer 만 재실행하고, 닿지 않은 도메인의 직전 라운드 결과는 그대로 승계한다. `security-reviewer` 는 실질 delta(새 로직·새 파일·의미 변경) + (`--branch`/`--security`) 조건 충족 시에만 재실행.
 
 **3. reviewer 프롬프트 제한**
 
@@ -500,9 +488,9 @@ marker 내용은 Step 5 와 동일한 형식이다 — 개수는 승계 도메�
 ## 제약
 
 - 검증만 수행한다. 코드 자동 수정 X. 수정은 사용자 결정 후 `developer` 서브에이전트에 위임한다.
-- 의도된 자동화 예외(node_modules 자동 설치 · decisions 도입 버전 자동 확정 = Step 2, schema 정합성 자동 실행 = Step 1 조건표 · Step 3a). 셋 다 **결정론적 생성물의 재생성**이지 판단이 필요한 수정이 아니다.
+- 의도된 자동화 예외(node_modules 자동 설치 = Step 2, schema 정합성 자동 실행 = Step 1 조건표 · Step 3a). 둘 다 **결정론적 생성물의 재생성**이지 판단이 필요한 수정이 아니다.
 - 메인 세션이 절차를 오케스트레이션한다. QA 검증 효과:
   - 코드 변경 (프로젝트 toolchain 입력) 은 `developer` 서브에이전트에 위임
-  - 문서 / 하네스 편집은 X — Agent 호출 + bash 검증만 수행 (예외: 위 도입 버전 자동 확정 — 모델이 아니라 스크립트가 결정론적으로 쓴다)
+  - 문서 / 하네스 편집은 X — Agent 호출 + bash 검증만 수행
 - 검증 명령(typecheck/test/lint/build)은 `/qa` 가 직접 bash로 실행한다(`${CLAUDE_PLUGIN_ROOT}/README.md` "검증 명령 실행 책임" 참조). reviewer 에이전트는 순수 코드 리뷰만 수행한다.
 - `/release` 는 toolchain 게이트를 갖지 않는다. `/qa` 가 PR 머지 전 검증 권위이며, `/release` 는 PR 게이트 통과 상태를 신뢰하고 origin/main 을 태깅한다.

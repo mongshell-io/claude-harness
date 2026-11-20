@@ -45,7 +45,7 @@ Agent 도구로 `subagent_type=Explore` 를 호출한다. 조사 범위:
 
 ### Step 3: 이슈 내용 결정 (확인 없이 진행)
 
-조사 결과로 라벨을 결정한다 (type 축 4종 중 택일):
+조사 결과로 라벨을 결정한다 (type 축에서 하나):
 
 - `type:feat` — 새 기능
 - `type:fix` — 버그 수정

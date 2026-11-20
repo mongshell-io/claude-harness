@@ -19,15 +19,14 @@
  *
  * 하나라도 불일치면 exit 1.
  *
- * 사용: `node "${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs"` (qa/release 스킬이 프로젝트 루트 cwd 에서 호출). `/qa` 가 decisions
- *   파일 변경 시 호출. repo 루트는 실행 cwd 가 속한 git 트리의 루트다 (아래 ROOT 주석 — sibling
- *   check-decision-versions.mjs 와 같은 방식).
+ * 사용: `node "${CLAUDE_PLUGIN_ROOT}/scripts/check-decisions-index.mjs"` (qa 스킬이 프로젝트 루트 cwd 에서 호출). `/qa` 가 decisions
+ *   파일 변경 시 호출. repo 루트는 실행 cwd 가 속한 git 트리의 루트다 (아래 ROOT 주석).
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-// repo 루트 = 실행 cwd 가 속한 git 트리의 루트. 호출 계약: qa/release 스킬이
+// repo 루트 = 실행 cwd 가 속한 git 트리의 루트. 호출 계약: qa 스킬이
 // 프로젝트 루트 cwd 에서 실행한다. 스크립트 위치 기준을 쓰지 않는 이유 — 플러그인
 // 배포 시 스크립트는 플러그인 캐시(비-git 디렉토리)에 놓이기 때문. worktree 에서는
 // 그 worktree 루트가 나온다 (자기 트리 검증).
