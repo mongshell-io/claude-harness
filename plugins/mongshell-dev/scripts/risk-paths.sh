@@ -93,7 +93,8 @@ fi
 DENY=""
 if [ -f "$CALLER" ]; then
 	DENY=$(sed -n "s/^[[:space:]]*deny_paths:[[:space:]]*'\(.*\)'[[:space:]]*\$/\1/p" "$CALLER" | head -1)
-	if [ -z "$DENY" ] && grep -q '^[[:space:]]*deny_paths:' "$CALLER"; then
+	# 값이 있는 줄만 본다 — 재사용 워크플로 자신(inputs 정의의 빈 `deny_paths:`)은 호출 파일이 아니다.
+	if [ -z "$DENY" ] && grep -q '^[[:space:]]*deny_paths:[[:space:]]*[^[:space:]]' "$CALLER"; then
 		warn "$CALLER 의 deny_paths 를 읽지 못함 — 한 줄 홑따옴표 형식(deny_paths: '^(…)')만 읽는다 (automerge-wiring.md)"
 	fi
 fi
