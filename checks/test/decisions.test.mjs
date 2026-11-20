@@ -635,6 +635,83 @@ describe("decisions — 이력 이름의 항목 · 소제목을 두지 않는다
 	});
 });
 
+describe("decisions — 조항 안에 갱신 표시를 끼우지 않는다 (inline-mark)", () => {
+	/** 소제목 꼴 파일의 「결정」 1항 아래에 줄을 끼운다. */
+	function withClauseLines(extra) {
+		const lines = headingFile();
+		lines.splice(lines.indexOf("1. 본문.") + 1, 0, ...extra);
+		return lines;
+	}
+
+	for (const mark of [
+		"   > 🔄 **#30 에서 3테이블로 갱신** — 이력 테이블이 더해졌다.",
+		"2. 호출 주체는 하나다. ⚠️ 갱신됨 #548-1 7항 — 호출 주체가 하나 더 생겼다.",
+		"2. 값은 계정 설정에 둔다. ⚠️ **갱신 — #922-1**: 다른 자리로 옮겼다.",
+		"2. 남길 후보를 고른다 ⚠️ **갱신됨(#676)** — 연결된 상품이 하나면 그것을 남긴다.",
+		"2. ⚠️ **3 · 4항 갱신 — #12-1** — 두 조항이 바뀌었다.",
+		"2. 만료 14일 전부터 재발급. ⚠️ 정정(#25 에서): 종전 서술은 미러 확보 전의 것이다.",
+		"2. \u26A0 재갱신 #9 — 이형 선택자 없이 적은 경고 글자.",
+		"2. 요청은 한 번 보낸다 (개정: Decision #12 — 두 번까지 다시 보낸다).",
+		"2. ~~옛 사본은 옮기지 않는다~~ 옛 사본도 옮긴다.",
+	]) {
+		it(`갱신 표시가 든 줄을 잡는다 — ${mark.trim().slice(0, 24)}`, () => {
+			const lines = withClauseLines([mark]);
+			assert.deepEqual(found(lines), [{ kind: "inline-mark", lines: [lines.indexOf(mark) + 1] }]);
+		});
+	}
+
+	it("여러 줄이면 한 건으로 묶어 줄을 전부 싣는다", () => {
+		const first = "   > 🔄 **#30 에서 갱신** — 하나.";
+		const second = "2. 둘째 조항. ⚠️ 갱신됨 #31 — 둘.";
+		const lines = withClauseLines([first, second]);
+		assert.deepEqual(found(lines), [{ kind: "inline-mark", lines: [lines.indexOf(first) + 1, lines.indexOf(second) + 1] }]);
+	});
+
+	it("목록 꼴의 들여쓴 줄에서도 잡는다", () => {
+		const mark = "  - 본문 둘. ⚠️ 갱신됨 #31 — 바뀌었다.";
+		const lines = listFile({ tail: [mark] });
+		assert.deepEqual(found(lines), [{ kind: "inline-mark", lines: [lines.indexOf(mark) + 1] }]);
+	});
+
+	for (const ok of [
+		"2. ⚠️ **한계** — 관측 원문은 동기화가 옵션을 끝까지 읽었을 때만 갱신된다.",
+		"2. ⚠️ **이 결정은 참고 저장소의 결정을 채택하지 않는다는 선언이다.**",
+		"2. 덧댈 때 쓰던 `🔄` · `⚠️ 갱신됨` · `~~취소선~~` 표시는 쓰지 않는다.",
+		"2. 캐시는 하루에 한 번 갱신한다 (갱신 주기: 24시간 아님 — 스윕 시각).",
+		"2. 개정 절차는 두지 않는다 — 바뀌면 조항을 고쳐 쓴다.",
+	]) {
+		it(`지금 참인 조항은 통과한다 — ${ok.slice(0, 24)}`, () => {
+			assert.deepEqual(found(withClauseLines([ok])), []);
+		});
+	}
+
+	it("코드 펜스 안의 표시는 보지 않는다", () => {
+		assert.deepEqual(found(withClauseLines(["   ```md", "   > 🔄 **#30 에서 갱신**", "   ```"])), []);
+	});
+
+	it("다른 종류로 이미 낸 줄은 다시 내지 않는다 — 목록 꼴 최상위의 인용 줄", () => {
+		const stray = "> 🔄 **#30 에서 갱신** — 최상위에 덧댄 인용.";
+		const lines = listFile({ tail: [stray] });
+		assert.deepEqual(found(lines), [{ kind: "stray-block", lines: [lines.indexOf(stray) + 1] }]);
+	});
+
+	it("헤더와 본문 블록 사이의 배너는 head-overlay 로만 낸다", () => {
+		const banner = "> ⚠️ **3항 갱신 — #12-1** — 배너.";
+		const lines = headingFile({ head: [banner] });
+		assert.deepEqual(found(lines), [{ kind: "head-overlay", lines: [lines.indexOf(banner) + 1] }]);
+	});
+
+	it("archive 파일은 보지 않는다", () => {
+		assert.deepEqual(found(withClauseLines(["   > 🔄 **#30 에서 갱신**"]), FILE_ID, { archived: true }), []);
+	});
+
+	it("문구가 고치는 법을 말한다", () => {
+		const [violation] = findDecisionViolations(withClauseLines(["   > 🔄 **#30 에서 갱신** — 하나."]), FILE_ID);
+		assert.match(violation.msg, /조항 안에 갱신 표시/);
+		assert.match(violation.msg, /해당 조항을 지금 참인 것만 남게 고쳐 쓰고/);
+	});
+});
+
 describe("decisions — formatFindings", () => {
 	it("위반마다 문구 한 줄과 그 아래 고칠 자리를 낸다", () => {
 		const out = formatFindings([
