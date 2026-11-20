@@ -74,7 +74,7 @@ git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" 
 - 변경된 문서는 본문을 읽는다.
 - 비변경 권위 문서 중 본문 대조가 필요한 후보:
   - **도메인 겹침** — 변경 문서와 role / non_goals 키워드가 인접하거나 주제가 겹치는 문서. **보수적(recall 우선)** — 키워드 정확 일치가 아니어도 주제가 인접하면 포함 (ssot-duplicate / contradiction false-negative 방지).
-  - **Decision 인용 발견** — 변경 문서가 `Decision N`(legacy 순번) 또는 `Decision #N`(이슈번호) 을 인용한 경우 그 인용의 read 대상 결정 파일을 read (adr-content-mismatch 절차 — read 대상은 워크플로우 4).
+  - **Decision 인용 발견** — 변경 문서가 `Decision N`(legacy 순번) 또는 `Decision #N`(이슈번호) 을 인용한 경우 그 인용의 read 대상 Decision 파일을 read (adr-content-mismatch 절차 — read 대상은 워크플로우 4).
 - release 로그 류(대량 시간순 항목 나열)는 어떤 검증 키도 본문을 활용하지 않으므로 읽지 않는다. 결정 기록(`docs/architecture-decisions/` · `docs/harness-decisions/`)은 이 제외 대상이 아니다.
 
 판단:
@@ -104,7 +104,7 @@ git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" 
 
 **서술 통화(currency) 검증 — 권위 문서는 현재형으로만 쓴다**
 
-이력의 권위는 결정 기록과 git 이다 — 결정 기록도 지금 참인 것만 적고 고쳐 쓰기 전 원문은 archive 로 내린다(`${CLAUDE_PLUGIN_ROOT}/references/required-docs.md` 의 결정 기록 절이 권위). 그 밖의 권위 문서는 **지금 무엇이 참인지**만 서술한다 — 독자가 과거를 알아야 현재를 이해하는 구조는 시간이 지나면 조용히 거짓이 된다.
+이력의 권위는 결정 기록과 git 이다 — 결정 기록도 지금 참인 것만 적는다 — 조항이 바뀌면 그 Decision 파일을 고쳐 쓰고, 바뀌기 전 내용은 git 이 갖는다(`${CLAUDE_PLUGIN_ROOT}/references/required-docs.md` 의 결정 기록 절이 권위). 그 밖의 권위 문서는 **지금 무엇이 참인지**만 서술한다 — 독자가 과거를 알아야 현재를 이해하는 구조는 시간이 지나면 조용히 거짓이 된다.
 
 - `stale-history` — 현재 상태를 과거와의 대비로 서술한다 (예: "예전엔 X 였지만 지금은 Y", "이제는 Y 다", "~로 바뀌었다"). 결론만 현재형으로 남기면 대비 없이 성립하는지 확인하고, 성립하면 대비를 삭제 제안한다.
   - **예외 — 부정형 가드**: "X 를 다시 도입하지 않는다 / X 는 기각됐다" 처럼 **재도입을 막기 위해** 과거를 인용하는 문장은 유지한다. 판별 기준은 "그 문장이 없으면 누군가 X 를 다시 제안하는가" 이다.
@@ -125,8 +125,8 @@ git ls-files -- '*.md' | while IFS= read -r f; do [ "$(head -n 1 "$f")" = "---" 
 
 하네스 `README.md` § "Decision 참조 검증 (adr-content-mismatch 공통 절차)" 를 따른다.
 - read 대상 — 인용마다 표기로 정한다. `docs/architecture-decisions/` 와 `docs/harness-decisions/` 는 순번이 겹칠 수 있어(같은 `Decision 11` 이 두 폴더에 따로 있을 수 있다) 식별자만으로는 가를 수 없다:
-  - 폴더 이름 없이 `Decision N` / `Decision #N` 만 있는 인용 → `docs/architecture-decisions/`. 거기에 그 식별자가 없는데 `docs/harness-decisions/`(있는 프로젝트)에는 있으면 「존재하지 않는 Decision」 으로 단정하지 않는다 — 「`architecture-decisions` 에 없음, `harness-decisions` 에 있음 — 폴더 이름 표기 누락 가능」 으로 보고한다 (등급은 워크플로우 5 "분류").
-  - `harness-decisions` 를 이름과 함께 밝힌 인용 — 그 폴더의 파일이 인용과 같은 링크의 대상이거나 같은 문장 안에 적힌 경우 (예: `harness-decisions Decision 11`, `[Decision 11](docs/harness-decisions/….md)`) → `docs/harness-decisions/`. 그 폴더가 없는 프로젝트에서는 이 인용의 대조를 건너뛴다 (하네스 `README.md` § "권위 문서 부재 시 동작").
+  - 폴더 이름 없이 `Decision N` / `Decision #N` 만 있는 인용 → `docs/architecture-decisions/`. 거기에(폴더 바로 아래에도 `archive/` 에도) 그 식별자가 없는데 `docs/harness-decisions/`(있는 프로젝트) 바로 아래에는 있으면 「존재하지 않는 Decision」 으로 단정하지 않는다 — 「`architecture-decisions` 에 없음, `harness-decisions` 에 있음 — 폴더 이름 표기 누락 가능」 으로 보고한다 (등급은 워크플로우 5 "분류"). `architecture-decisions/archive/` 에 있는 식별자는 공통 절차의 「폐기된 Decision 인용」 으로만 보고한다.
+  - `harness-decisions` 를 이름과 함께 밝힌 인용 — 그 폴더의 파일이 인용과 같은 링크의 대상이거나, 폴더 이름이 인용과 같은 문장 안에 적힌 경우 (예: `harness-decisions Decision 11`, `[Decision 11](docs/harness-decisions/….md)`) → `docs/harness-decisions/`. 그 폴더가 없는 프로젝트에서는 이 인용의 대조를 건너뛴다 (하네스 `README.md` § "권위 문서 부재 시 동작").
 - 검출 도메인 = `**/*.md` 중 하네스 루트 밖 (frontmatter 있는 권위 문서만. 일반 문서 및 harness 도메인은 적용 X)
 
 각 위반은 다음 정보 포함:

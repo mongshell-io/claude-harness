@@ -99,7 +99,7 @@ claude-harness/
 │   ├── skills/                       #   절차 스킬(create-issue·plan·qa·pr·review-comments·release) + 규율 스킬
 │   ├── references/                   #   필요할 때 읽는 문서 — 각 파일 머리말이 자기 설명
 │   ├── templates/                    #   앱 저장소 설정 정본
-│   └── scripts/                      #   스킬이 부르는 결정적 검사
+│   └── scripts/                      #   스킬이 부르는 스크립트
 ├── plugins/mongshell-ops/            # 운영 도구 (OpenClaw Slack 브리지)
 ├── checks/                           # @mongshell/checks — 앱 저장소 공용 check:*
 ├── tools/                            # 이 저장소 유지보수용 (배포되지 않음) — lint.mjs · consumers.sh

@@ -23,10 +23,10 @@ tools: Read, Grep, Glob, Bash
 
 **필수 read 문서** (code-reviewer 가 호출되면 매번 의식. 루트 / 영역별 `CLAUDE.md` 는 자동 로드):
 
-- `docs/architecture-decisions/` — 지금 유효한 Decision 집합(Decision 하나가 파일 하나). 제목 목록(`grep -m1 '^# Decision' docs/architecture-decisions/*.md`)에서 시작하면 대개 충분하다. `archive/` 는 폐기된 기록이라 근거로 읽지 않는다.
+- `docs/architecture-decisions/` — 지금 유효한 Decision 집합(Decision 하나가 파일 하나). 제목 목록(`grep -Hm1 '^# Decision' docs/architecture-decisions/[0-9]*.md`)에서 시작하면 대개 충분하다. `archive/` 는 폐기된 기록이라 근거로 읽지 않는다.
 - `docs/architecture.md` — 인증·외부 의존성 정책 위반 점검 시 (Tech Stack / Data Flow / Auth / Infrastructure)
 
-**Decision 본문 읽기**: 제목 목록으로 후보를 좁힌 뒤, 변경 파일 도메인과 겹치는 Decision 과 diff·영역별 `CLAUDE.md` 가 직접 인용한(`Decision N` / `Decision #N`) Decision 의 파일(`docs/architecture-decisions/<식별자에서 # 를 뗀 것>.md`)을 읽는다. 판정에 필요하면 더 읽어도 된다 — 습관적인 전체 덤프만 피하면 된다.
+**Decision 본문 읽기**: 제목 목록으로 후보를 좁힌 뒤, 변경 파일 도메인과 겹치는 Decision 과 diff·영역별 `CLAUDE.md` 가 직접 인용한(`Decision N` / `Decision #N`) Decision 의 파일(`docs/architecture-decisions/<식별자에서 # 를 뗀 것>.md`)을 읽는다. 판정에 필요하면 더 읽어도 된다 — 습관적인 전체 덤프만 피하면 된다. 인용된 Decision 의 파일이 폴더 바로 아래에 없으면(`archive/` 로 내려갔거나 없는 식별자) 근거로 쓰지 않고 그 사실을 리포트에 적는다.
 
 ## 워크플로우
 

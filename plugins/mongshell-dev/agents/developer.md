@@ -21,7 +21,7 @@ description: >-
 
 - `docs/architecture.md` — Tech Stack / Data Flow / Auth / Infrastructure
 - `docs/development.md` — 테스트 / typecheck / 로컬 개발 명령어
-- `docs/architecture-decisions/` — 결정 배경 (인용된 Decision 의 파일 `<식별자에서 # 를 뗀 것>.md`)
+- `docs/architecture-decisions/` — 결정 배경 (인용된 Decision 의 파일 `<식별자에서 # 를 뗀 것>.md`). Decision 파일을 새로 쓰거나 고치거나 `archive/` 로 내릴 때는 그 폴더의 `README.md` 를 먼저 읽는다 — 식별자 · 파일 이름 · 본문 모양의 프로젝트 규칙이 거기 있다.
 - **1인 운영 전제** — 구현 방식 선택 시 단순성·운영 부담 의식. 팀 협업 본질 패턴은 디스카운트.
 
 독립 영역 간엔 다른 Developer 에이전트와 **병렬 실행 가능** (예: `api/<domain-A>` + `components/<feature-B>`).

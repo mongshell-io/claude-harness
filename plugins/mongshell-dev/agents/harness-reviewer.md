@@ -135,7 +135,7 @@ echo "$ROOTS" | while read -r r; do find "$r/agents" "$r/skills" -name '*.md' -p
 등급 의미는 하네스 `README.md` "공통 분류 등급" 참조. 본 reviewer 의 위반 키 → 등급 매핑:
 
 - `P0` — frontmatter-schema-violation / frontmatter-body-mismatch 명백한 모순 / skill-rnr-overlap 통째 / agent-rnr-overlap 통째 / dispatch-mismatch 양방향 모순 / main-orchestration-violation 명백 위반 / exception-clause-accumulation 명세 안 cross-domain 침범 예외
-- `P1` — 부분적 frontmatter-body-mismatch / 짧은 R&R 침범 / adr-content-mismatch / exception-clause-accumulation 정책 비대칭 단서 / perf-anti-pattern 의 명백한 영향 (자동 로드 문서 read)
+- `P1` — 부분적 frontmatter-body-mismatch / 짧은 R&R 침범 / adr-content-mismatch (등급은 하네스 `README.md` § "Decision 참조 검증" 공통 절차대로 — 존재하지 않는 Decision 만 P0) / exception-clause-accumulation 정책 비대칭 단서 / perf-anti-pattern 의 명백한 영향 (자동 로드 문서 read)
 - `P2` — 톤·표현 보완 / description 길이 최적화 / perf-anti-pattern 의 판단 모호 (agent 호출 정당성)
 
 ### Step 6. 리포트
