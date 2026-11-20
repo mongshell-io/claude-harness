@@ -109,7 +109,7 @@ for d in extension extension-*; do
   ls "$d"/package.json "$d"/pnpm-lock.yaml "$d"/wxt.config.ts "$d"/src >/dev/null
   grep -qE '"wxt": *"[~^]?0\.21\.' "$d"/package.json || echo "WXT 0.21.x 아님"
   # 따옴표는 " · ' 어느 쪽이든 된다
-  for p in "srcDir: *[\"']src[\"']" "outDir: *[\"']dist[\"']" "outDirTemplate: *[\"']\.\./dist\{\{modeSuffix\}\}[\"']" 'dist-dev'; do
+  for p in "srcDir: *[\"']src[\"']" "outDir: *[\"']dist[\"']" "outDirTemplate:.*[\"']\.\./dist\{\{modeSuffix\}\}[\"']" 'dist-dev'; do
     grep -qE "$p" "$d"/wxt.config.ts || echo "빠짐: $p"
   done
   ls "$d"/public/icon/{16,32,48,128}.png >/dev/null
@@ -118,5 +118,7 @@ for d in extension extension-*; do
   for f in "$d"/dist/manifest.json "$d"/dist-dev/manifest.json "$d"/.wxt/tsconfig.json; do
     git check-ignore -q "$f" || echo "git 제외 안 됨: $f"
   done
+  # 스토어용 묶음을 따로 만드는 폴더만
+  grep -q 'dist-store' "$d"/wxt.config.ts && { git check-ignore -q "$d"/dist-store/manifest.json || echo "git 제외 안 됨: $d/dist-store/manifest.json"; }
 done
 ```

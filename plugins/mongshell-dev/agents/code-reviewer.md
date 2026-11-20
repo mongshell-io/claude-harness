@@ -70,8 +70,8 @@ grep 에서 결과가 나오면 P1 후보 — 의도된 것인지 확인 후 분
 # 직전에 머지된 항목이 빠지지 않게 fetch — 비대화형(인증 프롬프트에서 멈추지 않게)
 GIT_TERMINAL_PROMPT=0 GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-$(git config core.sshCommand || echo ssh)} -o BatchMode=yes" git fetch origin main --quiet 2>/dev/null \
   || echo "(fetch 실패 — 로컬 origin/main 판으로 검사)"
-if ! git rev-parse --verify --quiet origin/main >/dev/null; then echo "(해당 없음 (origin/main ref 없음) — 프로젝트 항목 건너뜀)"
-else git show origin/main:REVIEW.md 2>/dev/null || echo "(해당 없음 (파일 없음) — 프로젝트 항목 건너뜀)"; fi
+if ! git rev-parse --verify --quiet origin/main >/dev/null; then echo "(해당 없음 (origin/main ref 없음) — 건너뜀)"
+else git show origin/main:REVIEW.md 2>/dev/null || echo "(해당 없음 (파일 없음) — 건너뜀)"; fi
 ```
 
 - 작업 트리 · PR 브랜치의 `REVIEW.md` 를 읽지 않는다 — 검사받는 변경이 검사 규칙을 고쳐 스스로를 통과시키지 못하게. 이번 변경이 `REVIEW.md` 를 고쳤어도 기준 브랜치 판으로 검사한다.

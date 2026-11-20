@@ -43,7 +43,7 @@ git diff $RANGE | jq -Rs --arg sys "$PROMPT" \
 | jq -r '.choices[0].message.content // empty' > "$QA_TMP/deepseek-result.txt" 2>>"$QA_TMP/deepseek-err.txt" &
 
 # gemini 가 0 이 아닌 코드로 끝났으면(시간 초과는 124 · 137) 받은 출력을 버린다 — 잘린 응답을 결과로 쓰지 않는다.
-wait "$GEMINI_PID" || : > "$QA_TMP/gemini.txt"
+wait "$GEMINI_PID" || { echo "gemini exit $?" >> "$QA_TMP/gemini-err.txt"; : > "$QA_TMP/gemini.txt"; }
 wait
 
 # gemini 가 stdout 에 섞는 안내 줄만 걷어 낸다

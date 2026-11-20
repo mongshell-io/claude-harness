@@ -225,7 +225,7 @@ Agent 도구로 `subagent_type=harness-reviewer` 를 호출한다. 프롬프트�
 
 **Step 3c: browser 검증 (`--branch` + UI 변경 조건일 때만)**
 
-Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경우에만 실행한다.
+Step 1 의 UI 변경 판정에서 UI 변경이 확인됐고 `--branch` 인 경우에만 실행한다. `.claude/browser-scenarios.md` 가 없으면 앱을 띄우지 않고 건너뛴다 — 리포트에 「권위 문서 부재 — skip: `.claude/browser-scenarios.md`」 를 적는다.
 
 메인 세션이 `preview_*` 도구를 순차 호출한다. 구체 진입 절차·라우트·점검 항목은 `.claude/browser-scenarios.md` 참조로 위임 (본문에 프로젝트 종속값 미기재).
 
@@ -314,7 +314,7 @@ toolchain 검증(typecheck/test/lint/build/schema/decisions 인덱스) 실패는
 - schema 정합성 (마이그레이션 + ERD 산출물): ✅ Passed / ❌ Failed / ⏭️ DB schema 경로 변경 없음 — 스킵
 - decisions 인덱스 정합: ✅ Passed / ❌ Failed (exit 1 — MISSING/DANGLING/중복/NO_SECTION) / ⏭️ decisions 파일 변경 없음 — 스킵
 - harness-core 마커: ✅ 정본과 같음 / ⚠️ 낡음 (`루트 CLAUDE.md = … / 정본 = …`) / ⏭️ 마커 없음 — 스킵
-- browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
+- browser 검증: ✅ 완료 (`--branch` + UI 변경) / ⏭️ 단발 기본 — 스킵 / ⏭️ UI 변경 없음 — 스킵 / ⏭️ browser-scenarios.md 없음 — 스킵 / ⏭️ preview_start 실패 — 스킵
 - `code-reviewer`: ✅ 완료 / ⏭️ `--skip-code-review` 사용자 명시 스킵
 - REVIEW.md 트리거: R2 · R5 / 없음 / 해당 없음 (파일 없음) / 해당 없음 (origin/main ref 없음) / ⏭️ code-reviewer 미호출 — 스킵 (code-reviewer 결과 그대로, fetch 실패 문구가 있으면 덧붙임 — `references/review-checklist.md`)
 - `security-reviewer`: ✅ 완료 / ⏭️ 단발 기본 — 스킵 / ⏭️ 코드 변경 없음 — 스킵
@@ -361,6 +361,8 @@ printf '위험 경로 패턴: %s\n' "$RISKY_PATTERN"
 한 줄 안내(사용자 출력): "QA 통과 marker 기록 — /pr Step 0 게이트 + Step 2 'QA 발견 요약' 에서 사용됨. 위험 경로 패턴: <블록이 찍은 RISKY_PATTERN>" — 스크립트가 stderr 로 낸 `경고:` 줄(정책 노브 ↔ deny_paths 드리프트 · 작업 트리의 정책 노브 변경 · deny_paths 형식)이 있으면 그대로 덧붙인다.
 
 - 기본(uncommitted) 호출은 부분 검증이라 PR 범위를 보증하지 못하므로 marker 를 기록하지 않는다.
+- `/plan` 라운드 루프(좁은 RANGE) 도 marker 를 기록하지 않는다. 사이클 종료 후 `/qa --branch` 가 marker 기록의 정당한 지점이다.
+- P0 가 1건 이상이면 marker 를 기록하지 않는다 (찍히지 않은 HEAD = 미통과 신호).
 
 **직전 QA SHA 기록 (모든 /qa 호출 — 통과 여부 무관):**
 
@@ -372,8 +374,6 @@ git rev-parse HEAD > "/tmp/qa-$(basename "$(git rev-parse --show-toplevel)").las
 ```
 
 - 기록 실패 시 무시하고 진행 (best-effort — 파일이 없으면 재검증 모드 대신 일반 /qa 로 폴백된다).
-- `/plan` 라운드 루프(좁은 RANGE) 도 marker 를 기록하지 않는다. 사이클 종료 후 `/qa --branch` 가 marker 기록의 정당한 지점이다.
-- P0 가 1건 이상이면 marker 를 기록하지 않는다 (찍히지 않은 HEAD = 미통과 신호).
 
 ### Step 6: 후속 (사용자 선택)
 
@@ -397,11 +397,25 @@ P2 의 기본 처리는 조건부 유예 원칙에 따른다:
 
 ### 트리거 판정
 
-다음 두 조건이 모두 충족될 때 "재검증 모드" 로 진입한다:
-1. 직전 /qa 라운드가 이번 세션에서 실행됐다 (결과가 메모리에 있음).
-2. 수정 커밋이 직전 /qa 라운드 이후에만 추가됐다 (신규 기능 추가 없음).
+다음이 모두 충족될 때 "재검증 모드" 로 진입한다:
+1. 직전 /qa 라운드가 이번 세션에서 실행됐다 (결과가 메모리에 있음). 세션 재시작 등으로 직전 라운드 findings 를 신뢰 가능하게 확보할 수 없으면 항상 일반 /qa 다.
+2. 직전 라운드 이후의 변경이 그 findings 의 수정뿐이다 (신규 기능 추가 없음).
+3. 아래 명령이 폴백 문구를 내지 않는다.
 
-세션 재시작 등으로 직전 라운드 findings 를 신뢰 가능하게 확보할 수 없으면 (조건 1 미충족) 항상 일반 /qa 로 폴백한다. 직전 SHA 파일(Step 5 가 기록)이 없거나 그 SHA 가 지금 브랜치의 조상이 아니면(rebase · 브랜치 전환) 마찬가지로 일반 /qa 로 폴백한다 — 아래 「범위 축소 절차」 1 의 명령이 판정한다.
+```bash
+# 직전 /qa 라운드 이후 바뀐 파일(커밋한 것 + 아직 커밋하지 않은 것)을 뽑는다.
+# 직전 SHA 파일이 없거나 · 그 SHA 가 지금 브랜치의 조상이 아니거나(rebase · 브랜치 전환) · 바뀐 파일이 없으면
+# 빈 목록으로 조용히 통과하지 않고 폴백 문구를 낸다.
+QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
+LAST_QA_SHA=$(cat "$QA_TMP.last-sha" 2>/dev/null)
+if [ -n "$LAST_QA_SHA" ] && git merge-base --is-ancestor "$LAST_QA_SHA" HEAD 2>/dev/null; then
+  rm -rf "$QA_TMP" && mkdir -p "$QA_TMP"   # 직전 라운드 산출물을 지운다 — 재검증에서는 Step 1 의 init 을 다시 돌리지 않는다
+  git diff "$LAST_QA_SHA" --name-only --diff-filter=d > "$QA_TMP/reverify-changed.txt"
+  [ -s "$QA_TMP/reverify-changed.txt" ] || echo "직전 라운드 이후 바뀐 파일 없음 — 일반 /qa 로 폴백"
+else
+  echo "직전 QA SHA 없음 또는 조상 아님 — 일반 /qa 로 폴백"
+fi
+```
 
 조건을 충족하지 않으면 일반 /qa 절차(Step 0~6)를 그대로 실행한다.
 
@@ -418,21 +432,11 @@ P2 의 기본 처리는 조건부 유예 원칙에 따른다:
 
 **1. 수정 diff 도메인 산출**
 
-```bash
-# 직전 /qa 라운드 이후 커밋들의 변경 파일만 추출한다. 직전 SHA 를 읽지 못하면 빈 목록으로 조용히 통과하지 않고 멈춘다.
-QA_TMP="/tmp/qa-$(basename "$(git rev-parse --show-toplevel)")"
-LAST_QA_SHA=$(cat "$QA_TMP.last-sha" 2>/dev/null)
-if [ -n "$LAST_QA_SHA" ] && git merge-base --is-ancestor "$LAST_QA_SHA" HEAD 2>/dev/null; then
-  rm -rf "$QA_TMP" && mkdir -p "$QA_TMP"   # 직전 라운드 산출물을 지운다 (Step 1 의 init 과 같다)
-  git diff "${LAST_QA_SHA}..HEAD" --name-only --diff-filter=d > "$QA_TMP/reverify-changed.txt"
-else
-  echo "직전 QA SHA 없음 또는 조상 아님 — 일반 /qa 로 폴백"
-fi
-```
+「트리거 판정」 의 명령이 만든 `$QA_TMP/reverify-changed.txt` 가 입력이다.
 
 **2. 도메인 매칭**
 
-수정 diff 파일 목록을 Step 1 과 동일한 split(하네스 루트 유도 포함)으로 재분류해 하네스 README "Reviewer 라우팅" 표로 매칭한다 — 닿은 도메인의 reviewer 만 재실행하고, 닿지 않은 도메인의 직전 라운드 결과는 그대로 승계한다. `security-reviewer` 는 실질 delta(새 로직·새 파일·의미 변경) + (`--branch`/`--security`) 조건 충족 시에만 재실행.
+수정 diff 파일 목록(`reverify-changed.txt` — `git diff $RANGE` 가 아니다)을 Step 1 과 동일한 split(하네스 루트 유도 포함. 그 블록의 init `rm -rf` 는 다시 돌리지 않는다)으로 재분류해 하네스 README "Reviewer 라우팅" 표로 매칭한다 — 닿은 도메인의 reviewer 만 재실행하고, 닿지 않은 도메인의 직전 라운드 결과는 그대로 승계한다. `security-reviewer` 는 실질 delta(새 로직·새 파일·의미 변경) + (`--branch`/`--security`) 조건 충족 시에만 재실행.
 
 **3. reviewer 프롬프트 제한**
 
