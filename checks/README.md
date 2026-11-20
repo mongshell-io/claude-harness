@@ -55,14 +55,29 @@ mongshell-io 앱 저장소가 같이 쓰는 결정적 검사(`check:*`)입니다
 
 | 검사 | 막는 것 | 설정 (기본값) |
 |---|---|---|
-| `journal` | drizzle journal `when` 이 러닝맥스 이하라 migrate 가 조용히 건너뛰는 것 · `.sql` ↔ journal tag 불일치(고아 마이그레이션) | `journalPath` (`drizzle/meta/_journal.json`) · `knownNonMonotonic: [{idx, why}]` — 이미 prod 에 적용된 비단조. 더는 비단조가 아니면 낡은 항목이라 실패 |
+| `journal` | drizzle journal `when` 이 러닝맥스 이하라 migrate 가 조용히 건너뛰는 것 · `when` 이 미래 시각이라 그 뒤 마이그레이션이 전부 건너뛰어질 것(허용치 5분) · `idx` 가 0 부터 빈틈 · 중복 없이 이어지지 않는 것 · `.sql` ↔ journal tag 불일치(고아 마이그레이션) | `journalPath` (`drizzle/meta/_journal.json`) · `knownNonMonotonic: [{idx, why}]` — 이미 prod 에 적용된 비단조. 더는 비단조가 아니면 낡은 항목이라 실패. 미래 시각 · idx 에는 예외 목록이 없다 |
 | `design-tokens` | 토큰 CSS 에 없는 `<prefix>*` 유틸리티 — Tailwind 는 오류 없이 클래스를 만들지 않는다 | `tokensCss` (`src/styles/design-tokens.css`) · `srcDir` (`src`) · `prefix` (`app-`) |
 | `react-compiler` | React Compiler 가 조용히 건너뛰는 함수(CompileError) — 빌드는 통과한다 | `srcDir` (`src`) · `skipDirs` (`["src/app/api", "src/test"]`) · `allowed: [{file, reason, why}]` — 쓰이지 않으면 실패 |
 | `no-horizontal-scroll` | 가로 스크롤 선언(`overflow-x-auto` 등)과 가로 짝 없는 세로 스크롤 | `srcDir` (`src`) · `hint` (필수 — 넓은 표를 맞추는 법) · `decisionRef` (필수 — 근거 결정). 허용 목록 없음 |
 | `doc-symbols` | 권위 문서가 백틱으로 부르는 이름이 소스에 없는 것(드리프트 · 오기재) | `docs` (필수) · `sourceDirs` (`["src", "scripts"]`) · `sourceFiles` (`package.json` · `drizzle.config.ts` · `vitest.config.ts` · `biome.json`) · `haystackExclude` · `allow: [{symbol, why}]`. **`harness.config.json` 은 설정과 무관하게 증거에서 뺀다** — 허용 목록이 자기를 증명하면 무동작이 된다 |
-| `ui-barrel` | UI barrel(`index.ts` 또는 `index.tsx`)의 깨진 re-export(`export *` 포함) | `dir` (`src/components/ui`) |
+| `ui-barrel` | UI barrel(`index.ts` 또는 `index.tsx`)의 깨진 re-export(`export *` 포함). 상대경로 지정자만 파일을 확인한다(확장자를 적은 것 포함) — 패키지 · 경로 별칭 지정자는 판정하지 않는다(typecheck 몫) | `dir` (`src/components/ui`) |
+| `decision-banners` | 결정 기록이 「지금 참인 것만 적는다」 는 모양에서 벗어난 것 — 폐기 · superseded 인데 헤더 직후 배너가 없는 Decision, `부분` 상태 · 배너, active Decision 에 덧댄 것(상태 칸의 세부 · 헤더 제목과 다른 인덱스 요약 · 도입 줄 앞에 끼운 줄 · 최상위 `- **라벨**` 항목이 아닌 줄 · 이력 항목), 3칸이 아닌 인덱스 행, `## 상태 인덱스` 부재. **정리된 저장소만 켠다**(아래) | `docs` (`["docs/architecture-decisions.md", "docs/harness-decisions.md"]`) — 목록의 파일이 없으면 실패. 결정 기록이 하나뿐이면 그 하나만 적는다. 허용 목록 없음 |
 
-각 검사의 근거 · 불변식 · 남은 한계는 [checks/](checks/) 의 파일 머리말이 권위입니다. 저장소 고유 규약(감바우 ui README 카탈로그 · `sideEffects` 표식, 결정 배너 등)은 그 저장소 로컬 스크립트로 남깁니다.
+각 검사의 근거 · 불변식 · 남은 한계는 [checks/](checks/) 의 파일 머리말이 권위입니다. 저장소 고유 규약(감바우 ui README 카탈로그 · `sideEffects` 표식 등)은 그 저장소 로컬 스크립트로 남깁니다.
+
+검사는 전부 **켜야 돕니다** — 이 패키지에 검사가 늘어도, 앱이 lockfile SHA 를 올리는 것만으로는 새 검사가 돌지 않습니다(`all` 은 package.json 의 `check:*` 만 돌립니다). 이미 켠 검사의 판정이 넓어지는 것은 SHA 를 올릴 때 받습니다.
+
+`decision-banners` 를 켜는 법 — 결정 기록을 그 모양으로 정리한 뒤에:
+
+```jsonc
+// 앱 package.json — 같은 이름의 저장소 로컬 스크립트가 있으면 이 줄로 바꾸고 그 스크립트는 지운다
+"check:decision-banners": "mongshell-check decision-banners"
+// 앱 harness.config.json
+"decision-banners": {}                                              // 결정 기록이 두 파일 다 있을 때
+"decision-banners": { "docs": ["docs/architecture-decisions.md"] }  // 하나뿐일 때
+```
+
+정리 전의 결정 기록은 위반이 수백 건 나옵니다. 정리하는 동안에는 스크립트 · 섹션을 추가한 브랜치에서 `pnpm check:decision-banners` 로 남은 건수를 봅니다(켜지 않은 채로는 섹션이 없어 설정 오류로 끝납니다).
 
 ## 바꿀 때
 

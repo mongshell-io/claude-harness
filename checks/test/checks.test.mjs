@@ -3,14 +3,16 @@ import { describe, it } from "node:test";
 import { resolveOptions } from "../lib/config.mjs";
 import { CHECKS } from "../lib/registry.mjs";
 import { runPool, selectCheckScripts } from "../lib/run-all.mjs";
+import { CLOCK_SKEW_TOLERANCE_MS, findFutureWhen, findIdxGaps } from "../checks/journal.mjs";
 import { selectTargets as reactCompilerTargets } from "../checks/react-compiler.mjs";
+import { isRelativeSpecifier, moduleCandidates } from "../checks/ui-barrel.mjs";
 import { captureConsole, makeRepo } from "./helpers.mjs";
 
-/** 임시 저장소에서 검사 하나를 돌려 종료 코드와 출력을 돌려준다. */
-function runCheck(t, name, files, section = {}) {
+/** 임시 저장소에서 검사 하나를 돌려 종료 코드와 출력을 돌려준다. `input` 은 run 에 더 넘길 값(journal 의 `now` 등). */
+function runCheck(t, name, files, section = {}, input = {}) {
 	const root = makeRepo(t, files);
 	const out = captureConsole(t);
-	const code = CHECKS[name].run({ root, options: resolveOptions(name, CHECKS[name].schema, section) });
+	const code = CHECKS[name].run({ root, options: resolveOptions(name, CHECKS[name].schema, section), ...input });
 	return { code, out: out.join("\n") };
 }
 
@@ -67,6 +69,89 @@ describe("journal", () => {
 	it("journalPath 설정을 따른다", (t) => {
 		const files = { "db/migrations/meta/_journal.json": { entries: [e(0, 1)] }, "db/migrations/0000_m.sql": "" };
 		assert.equal(runCheck(t, "journal", files, { journalPath: "db/migrations/meta/_journal.json" }).code, 0);
+	});
+
+	describe("미래 시각 when — 지금 시각은 run({ now }) 로 고정한다", () => {
+		// 실제 사고의 모양: 손으로 적은 라운드 넘버가 그날의 실제 시각보다 약 16시간 앞섰다.
+		const NOW = Date.UTC(2026, 6, 4, 5, 0, 0);
+		const FUTURE = Date.UTC(2026, 6, 4, 21, 20, 0);
+
+		it("when 이 지금보다 미래면 실패 — 단조 증가여도 걸린다 (다음 마이그레이션이 생기기 전에 막는다)", (t) => {
+			const { code, out } = runCheck(t, "journal", journalFiles([e(0, NOW - 2000), e(1, NOW - 1000), e(2, FUTURE)]), {}, { now: NOW });
+			assert.equal(code, 1);
+			assert.match(out, /journal when 이 미래 시각/);
+			assert.match(out, /idx 2 \(0002_m\) when=1783200000000 \(2026-07-04T21:20:00\.000Z\)/);
+			assert.doesNotMatch(out, /비단조/);
+		});
+
+		it("같은 journal 이 그 시각을 지난 뒤에는 통과한다 — 시간이 흘러 실패로 바뀌는 일은 없다", (t) => {
+			const files = journalFiles([e(0, NOW - 2000), e(1, NOW - 1000), e(2, FUTURE)]);
+			assert.equal(runCheck(t, "journal", files, {}, { now: FUTURE }).code, 0);
+		});
+
+		it("허용치 안(개발 PC 시계가 조금 앞선 경우)은 통과, 허용치를 1ms 넘으면 실패", (t) => {
+			const at = (when) => runCheck(t, "journal", journalFiles([e(0, NOW - 1000), e(1, when)]), {}, { now: NOW }).code;
+			assert.equal(at(NOW + CLOCK_SKEW_TOLERANCE_MS), 0);
+			assert.equal(at(NOW + CLOCK_SKEW_TOLERANCE_MS + 1), 1);
+		});
+
+		it("now 를 넣지 않으면 실행 시각이 기준이다", (t) => {
+			const { code, out } = runCheck(t, "journal", journalFiles([e(0, 1), e(1, Date.now() + 24 * 60 * 60 * 1000)]));
+			assert.equal(code, 1);
+			assert.match(out, /미래 시각/);
+		});
+
+		it("미래 when 은 knownNonMonotonic 으로 면제되지 않는다", (t) => {
+			const files = journalFiles([e(0, NOW - 3000), e(1, FUTURE), e(2, NOW - 1000)]);
+			const { code, out } = runCheck(t, "journal", files, { knownNonMonotonic: [{ idx: 2, why: "적용 완료" }] }, { now: NOW });
+			assert.equal(code, 1);
+			assert.match(out, /미래 시각/);
+			assert.doesNotMatch(out, /비단조/);
+		});
+
+		it("Date 로 표기할 수 없는 값도 죽지 않고 위반으로 보고한다", (t) => {
+			const { code, out } = runCheck(t, "journal", journalFiles([e(0, 1), e(1, 1e17)]), {}, { now: NOW });
+			assert.equal(code, 1);
+			assert.match(out, /날짜로 표기할 수 없는 값/);
+		});
+
+		it("findFutureWhen — 허용치를 넘는 entry 만 돌려준다 (순수 함수)", () => {
+			const entries = [e(0, 10), e(1, 100 + CLOCK_SKEW_TOLERANCE_MS), e(2, 101 + CLOCK_SKEW_TOLERANCE_MS)];
+			assert.deepEqual(findFutureWhen(entries, 100), [entries[2]]);
+		});
+	});
+
+	describe("idx 연속 — 0 부터 빈틈 · 중복 없이", () => {
+		it("빈틈이 있으면 실패 — 끊긴 자리만 보고한다", (t) => {
+			const { code, out } = runCheck(t, "journal", journalFiles([e(0, 1), e(1, 2), e(3, 3), e(4, 4)]));
+			assert.equal(code, 1);
+			assert.match(out, /idx 3 \(0003_m\) — 이 자리에 올 idx 는 2 입니다/);
+			assert.doesNotMatch(out, /idx 4 \(0004_m\) — 이 자리/);
+		});
+
+		it("0 이 아닌 값으로 시작하면 실패", (t) => {
+			const { code, out } = runCheck(t, "journal", journalFiles([e(1, 1), e(2, 2)]));
+			assert.equal(code, 1);
+			assert.match(out, /idx 1 \(0001_m\) — 이 자리에 올 idx 는 0 입니다/);
+		});
+
+		it("같은 idx 가 두 번 있으면 실패", (t) => {
+			const entries = [e(0, 1), e(1, 2), { idx: 1, tag: "0001_other", when: 3 }, e(2, 4)];
+			const { code, out } = runCheck(t, "journal", journalFiles(entries));
+			assert.equal(code, 1);
+			assert.match(out, /idx 1 \(0001_other\) — 이 자리에 올 idx 는 2 입니다/);
+		});
+
+		it("파일 안의 순서가 뒤섞여 있어도 idx 집합이 연속이면 이 판정은 통과한다 (idx 순으로 놓고 본다)", (t) => {
+			assert.equal(runCheck(t, "journal", journalFiles([e(1, 2), e(0, 1), e(2, 3)])).code, 0);
+		});
+
+		it("findIdxGaps — 끊긴 자리마다 하나 (순수 함수)", () => {
+			const at = (...idxs) => findIdxGaps(idxs.map((idx) => ({ idx, tag: `t${idx}` }))).map((g) => [g.entry.idx, g.expected]);
+			assert.deepEqual(at(0, 1, 2), []);
+			assert.deepEqual(at(0, 2, 3, 5), [[2, 1], [5, 4]]);
+			assert.deepEqual(at(0, 0), [[0, 1]]);
+		});
 	});
 });
 
@@ -208,6 +293,83 @@ describe("ui-barrel", () => {
 
 	it("re-export 가 0개면 실패 (fail-open 방지)", (t) => {
 		assert.equal(runCheck(t, "ui-barrel", ui("export const x = 1;")).code, 1);
+	});
+
+	it("패키지 · 경로 별칭 re-export 는 깨진 것으로 보지 않는다", (t) => {
+		const index = [
+			'export { Button } from "./Button";',
+			'export * from "@radix-ui/react-dialog";',
+			'export * as Popover from "@radix-ui/react-popover";',
+			'export { cn } from "@/lib/utils";',
+			'export type { ClassValue } from "clsx";',
+			'export { z } from "~/schema";',
+		].join("\n");
+		const { code, out } = runCheck(t, "ui-barrel", ui(index));
+		assert.equal(code, 0);
+		assert.doesNotMatch(out, /broken-reexport/);
+		assert.match(out, /re-export 6개 — 상대경로 1개 확인, 패키지 · 별칭 5개는 판정 제외/);
+	});
+
+	it("패키지 · 별칭 사이에 섞인 깨진 상대경로는 여전히 실패", (t) => {
+		const index = 'export * from "@radix-ui/react-dialog";\nexport { cn } from "@/lib/utils";\nexport { Gone } from "./Gone";';
+		const { code, out } = runCheck(t, "ui-barrel", ui(index));
+		assert.equal(code, 1);
+		assert.match(out, /\[broken-reexport\] index.ts 의 "\.\/Gone"/);
+		assert.match(out, /1개 항목 drift/);
+	});
+
+	it("확장자를 적은 상대경로는 그 파일을 찾는다 — `.js` 로 적은 것은 같은 이름의 TypeScript 파일도", (t) => {
+		const index = [
+			'export * from "./Button.tsx";',
+			'export { Button as B } from "./Button.js";',
+			'export * from "./table/index.ts";',
+			'export * from "./table/index.js";',
+		].join("\n");
+		const { code, out } = runCheck(t, "ui-barrel", ui(index));
+		assert.equal(code, 0, out);
+		assert.match(out, /re-export 4개, drift 없음/);
+	});
+
+	it("확장자를 적었는데 그 파일이 없으면 실패 — 다른 확장자의 같은 이름으로 넘기지 않는다", (t) => {
+		// Button.tsx 는 있지만 Button.ts 는 없다. `.jsx` 는 `.tsx` 로만 풀린다(table/index 는 .ts).
+		const index = 'export * from "./Button.ts";\nexport * from "./table/index.jsx";\nexport * from "./Gone.tsx";';
+		const { code, out } = runCheck(t, "ui-barrel", ui(index));
+		assert.equal(code, 1);
+		assert.match(out, /"\.\/Button\.ts"/);
+		assert.match(out, /"\.\/table\/index\.jsx"/);
+		assert.match(out, /"\.\/Gone\.tsx"/);
+		assert.match(out, /3개 항목 drift/);
+	});
+
+	it("index 가 없는 폴더를 가리키면 실패 — 폴더가 있다는 것만으로 통과하지 않는다", (t) => {
+		const files = { ...ui('export * from "./icons";'), "src/components/ui/icons/Arrow.tsx": "export const Arrow = 1;" };
+		const { code, out } = runCheck(t, "ui-barrel", files);
+		assert.equal(code, 1);
+		assert.match(out, /\[broken-reexport\] index.ts 의 "\.\/icons"/);
+	});
+
+	it("상위 폴더(`../`)를 가리키는 상대경로도 확인한다", (t) => {
+		const files = { ...ui('export * from "../shared/tokens";\nexport * from "../shared/gone";'), "src/components/shared/tokens.ts": "export const t = 1;" };
+		const { code, out } = runCheck(t, "ui-barrel", files);
+		assert.equal(code, 1);
+		assert.match(out, /"\.\.\/shared\/gone"/);
+		assert.doesNotMatch(out, /"\.\.\/shared\/tokens"/);
+	});
+
+	it("re-export 가 전부 패키지 · 별칭이면 실패 (확인한 파일이 0개 — 공회전)", (t) => {
+		const { code, out } = runCheck(t, "ui-barrel", ui('export * from "@radix-ui/react-dialog";\nexport { cn } from "@/lib/utils";'));
+		assert.equal(code, 1);
+		assert.match(out, /전부 패키지 · 별칭 지정자라 확인할 파일이 없습니다/);
+	});
+
+	it("isRelativeSpecifier · moduleCandidates (순수 함수)", () => {
+		for (const mod of ["./Button", "../shared/x", ".", ".."]) assert.equal(isRelativeSpecifier(mod), true, mod);
+		for (const mod of ["@radix-ui/react-dialog", "@/lib/utils", "clsx", "~/schema", ".hidden/x", "/abs/x"]) {
+			assert.equal(isRelativeSpecifier(mod), false, mod);
+		}
+		const candidates = moduleCandidates("ui", "./Button.js");
+		for (const expected of ["ui/Button.js", "ui/Button.ts", "ui/Button.tsx"]) assert.ok(candidates.includes(expected), expected);
+		assert.ok(moduleCandidates("ui", "./table").includes("ui/table/index.ts"));
 	});
 
 	it("barrel 이 없으면 실패", (t) => {
