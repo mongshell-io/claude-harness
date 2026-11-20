@@ -14,7 +14,7 @@
 #   core      루트 CLAUDE.md 의 harness-core 마커                          =(정본과 같음) | 낡음:<값> | -
 #   automerge .github/workflows/automerge.yml 이 공용 워크플로를 부르는가   @main | <다른 ref> | -
 #   setup     워크플로가 setup-node-pnpm 을 부르는가                        @main | <다른 ref> | -
-#   checks    lockfile 에 고정된 @mongshell/checks 커밋                     =(checks/ 최신 커밋) | 뒤처짐:<sha> | -
+#   checks    lockfile 에 고정된 @mongshell/checks 커밋                     =(그 커밋 이후 checks/ 변경 없음) | 뒤처짐:<sha> | ?:<sha>(이 체크아웃에 없는 커밋) | -
 #   pr-tpl    .github/pull_request_template.md 가 정본과 같은가             = | 다름 | -
 #   settings  .claude/settings.json 이 정본과 같은가(키 정렬 후)            = | 다름 | -
 #   dependabot .github/dependabot.yml 이 정본과 다른 줄 수                  =(0) | <줄 수> | -   (directories · 저장소 고유 ignore 는 허용 차이)
@@ -32,7 +32,8 @@ command -v gh >/dev/null || { echo "gh 가 없습니다" >&2; exit 1; }
 command -v jq >/dev/null || { echo "jq 가 없습니다" >&2; exit 1; }
 
 CORE_SSOT=$(grep -o 'harness-core: [0-9-]*' "$ROOT/plugins/mongshell-dev/references/claude-md-core.md" | head -1 | sed 's/harness-core: //')
-CHECKS_SSOT=$(git -C "$ROOT" log -1 --format=%H origin/main -- checks 2>/dev/null || git -C "$ROOT" log -1 --format=%H -- checks)
+MAIN_REF=$(git -C "$ROOT" rev-parse --verify --quiet origin/main || git -C "$ROOT" rev-parse HEAD)
+CHECKS_SSOT=$(git -C "$ROOT" log -1 --format=%H "$MAIN_REF" -- checks)
 
 # 저장소 기본 브랜치의 파일 내용(stdout). 없으면 출력 없이 exit 1 — gh 는 404 일 때도 오류 JSON 을 stdout 에 내므로 버린다.
 raw() {
@@ -70,7 +71,12 @@ row() {
 	checks=-
 	lock=$(raw "$repo" pnpm-lock.yaml || true)
 	v=$(printf '%s' "$lock" | grep -o "$ORG/$SELF/tar\.gz/[0-9a-f]\{40\}" | head -1 | sed 's|.*/||' || true)
-	if [ -n "$v" ]; then [ "$v" = "$CHECKS_SSOT" ] && checks='=' || checks="뒤처짐:${v:0:7}"; fi
+	# lockfile 에는 checks/ 의 마지막 커밋이 아니라 설치한 때의 저장소 HEAD 가 찍힌다 — 그 커밋 이후 checks/ 가 바뀌었는지로 판정한다.
+	if [ -n "$v" ]; then
+		if ! git -C "$ROOT" cat-file -e "$v^{commit}" 2>/dev/null; then checks="?:${v:0:7}"
+		elif git -C "$ROOT" diff --quiet "$v" "$MAIN_REF" -- checks; then checks='='
+		else checks="뒤처짐:${v:0:7}"; fi
+	fi
 
 	prtpl=-
 	if v=$(raw "$repo" .github/pull_request_template.md); then
