@@ -1,0 +1,26 @@
+# 하네스 본문 정합 검사 — `node tools/lint.mjs` (manifest · frontmatter · md 링크 · 플러그인 경로 참조).
+#
+# 🔴 GitHub 호스티드 러너(ubuntu-latest)에서만 돈다 — 이유는 checks-test.yml 머리말과 같다: 이 저장소는 public 이라
+# 외부 PR 도 이 워크플로를 돌린다. 권한은 읽기뿐이고 비밀값을 쓰지 않는다. 의존성이 없어 install 이 없다.
+name: harness-lint
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: harness-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - run: node tools/lint.mjs

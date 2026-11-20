@@ -22,7 +22,7 @@ mongshell-io 저장소들이 같이 쓰는 Claude Code 하네스의 단일 원�
 ## 검증
 
 ```bash
-node tools/lint.mjs            # 매 변경 — manifest · frontmatter · 링크 · 플러그인 경로 참조
+node tools/lint.mjs            # 매 변경 — manifest · frontmatter · 링크 · 플러그인 경로 참조 (PR 의 CI 도 돈다)
 cd checks && node --test       # checks/ 를 건드렸을 때 (PR 의 CI 도 돈다)
 ```
 

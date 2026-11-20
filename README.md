@@ -90,7 +90,8 @@ gh label create area:meta --color f9d0c4 --description "비-코드 작업 (하�
 claude-harness/
 ├── .claude-plugin/marketplace.json   # 마켓플레이스 정의 (name: mongshell)
 ├── .github/workflows/automerge.yml   # 앱 저장소 공용 PR 자동 머지 (workflow_call 전용 — 이 저장소 트리거 없음)
-├── .github/workflows/checks-test.yml # checks/ 테스트 (이 저장소의 유일한 CI)
+├── .github/workflows/checks-test.yml # checks/ 테스트 (checks/ 가 바뀐 PR)
+├── .github/workflows/harness-lint.yml # tools/lint.mjs (모든 PR)
 ├── .github/actions/setup-node-pnpm/  # 앱 저장소 공용 CI 준비 composite action
 ├── plugins/mongshell-dev/            # 개발 하네스
 │   ├── README.md                     #   흐름도·라우팅·공통 정의·본문 작성 가이드 (cross-cutting 정의의 권위)
